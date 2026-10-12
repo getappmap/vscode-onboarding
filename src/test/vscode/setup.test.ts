@@ -20,6 +20,11 @@ suite('Run Project Setup', function () {
     assert.strictEqual(result['broken'].detail,
       'Its check failed and it has no fix.\nInstall it by hand.\nOutput:\nnot-installed');
     assert.strictEqual(result['after-broken'].state, 'skipped');
+
+    const folder = vscode.workspace.workspaceFolders![0].uri;
+    const written = Buffer.from(await vscode.workspace.fs.readFile(vscode.Uri.joinPath(folder, '.onboarding', 'status.yaml')))
+      .toString('utf8');
+    assert.match(written, /^ {2}broken:\n {4}title: broken\n {4}state: failed$/m);
   });
 
   test('a later run remembers what was proven', async () => {

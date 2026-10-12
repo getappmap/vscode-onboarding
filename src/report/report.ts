@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { Entry } from '../manifest/manifest';
 import { expandPreset } from '../setup/presets';
 import { definitionHash, inDependencyOrder } from '../setup/runSetup';
+import type { EntryRecord } from './statusFile';
 
 export type EntryState =
   | 'waiting' | 'checking' | 'fixing' | 'proving'
@@ -48,12 +49,11 @@ const STATE_ICON: Record<EntryState, [icon: string, color?: string]> = {
 const RUNNING: EntryState[] = ['checking', 'fixing', 'proving'];
 
 /**
- * The rows to show before setup runs, such as when VS Code starts: entries proven with
- * their current definition are ready, others show their last result, or wait.
+ * The rows to show when setup is not running, from the status file: each entry's last
+ * result, except that an entry recorded as ready whose definition has changed since it was
+ * proven waits. Entries with no record wait.
  */
-export function rowsBeforeRun(
-  entries: Entry[], last: Record<string, EntryStatus>, proven: Record<string, string>,
-): EntryStatus[] {
+export function rowsBeforeRun(entries: Entry[], records: Record<string, EntryRecord>): EntryStatus[] {
   let ordered: Entry[];
   try {
     ordered = inDependencyOrder(entries);
@@ -62,22 +62,30 @@ export function rowsBeforeRun(
   }
   return ordered.map(entry => {
     const title = entry.title ?? entry.id;
-    if (isProven(entry, proven)) {
-      return { id: entry.id, title, state: 'ready', detail: 'Proven earlier.' };
-    }
-    const previous = last[entry.id];
-    return previous && previous.state !== 'ready' && !RUNNING.includes(previous.state)
-      ? { ...previous, title }
+    const record = records[entry.id];
+    const usable = record && !RUNNING.includes(record.state) && record.state !== 'waiting'
+      && (record.state !== 'ready' || record.proven === currentHash(entry));
+    return usable
+      ? { id: entry.id, title, state: record.state, ...(record.detail ? { detail: record.detail } : {}) }
       : { id: entry.id, title, state: 'waiting' };
   });
 }
 
-function isProven(entry: Entry, proven: Record<string, string>): boolean {
+function currentHash(entry: Entry): string | undefined {
   try {
-    return proven[entry.id] === definitionHash(expandPreset(entry));
+    return definitionHash(expandPreset(entry));
   } catch {
-    return false;
+    return undefined;
   }
+}
+
+/** Passes every report to each reporter in turn. */
+export function allOf(...reporters: SetupReporter[]): SetupReporter {
+  return {
+    begin: entries => reporters.forEach(r => r.begin(entries)),
+    update: status => reporters.forEach(r => r.update(status)),
+    end: statuses => reporters.forEach(r => r.end(statuses)),
+  };
 }
 
 /**

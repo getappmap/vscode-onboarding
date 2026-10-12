@@ -11,33 +11,38 @@ const gradle: Entry = { id: 'gradle', check: 'gradle -v', dependsOn: ['jdk'] };
 /** Lets the summary message's .then() run. */
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
-suite('Report: rows before a run', () => {
-  test('proven entries are ready, others show their last result or wait', () => {
-    const rows = rowsBeforeRun([gradle, jdk, { id: 'vpn', check: 'x' }, { id: 'new', check: 'x' }], {
-      gradle: { id: 'gradle', title: 'gradle', state: 'failed', detail: 'Its check failed.' },
-      vpn: { id: 'vpn', title: 'vpn', state: 'ready' },
-    }, { jdk: definitionHash(jdk) });
+suite('Report: rows from the status file', () => {
+  test('each entry shows its last result; one never run waits', () => {
+    const rows = rowsBeforeRun([gradle, jdk, { id: 'new', check: 'x' }], {
+      jdk: { title: 'Java 21', state: 'ready', detail: 'Proven earlier.', proven: definitionHash(jdk) },
+      gradle: { title: 'gradle', state: 'failed', detail: 'Its check failed.' },
+    });
 
     assert.deepStrictEqual(rows, [
       { id: 'jdk', title: 'Java 21', state: 'ready', detail: 'Proven earlier.' },
       { id: 'gradle', title: 'gradle', state: 'failed', detail: 'Its check failed.' },
-      { id: 'vpn', title: 'vpn', state: 'waiting' },
       { id: 'new', title: 'new', state: 'waiting' },
     ]);
   });
 
   test('an entry whose definition changed since it was proven waits', () => {
-    const rows = rowsBeforeRun([{ ...jdk, check: 'java --version' }], {}, { jdk: definitionHash(jdk) });
+    const rows = rowsBeforeRun([{ ...jdk, check: 'java --version' }],
+      { jdk: { title: 'Java 21', state: 'ready', proven: definitionHash(jdk) } });
     assert.strictEqual(rows[0].state, 'waiting');
   });
 
   test('a run that was cut off part way is not shown as running', () => {
-    const rows = rowsBeforeRun([jdk], { jdk: { id: 'jdk', title: 'Java 21', state: 'checking' } }, {});
+    const rows = rowsBeforeRun([jdk], { jdk: { title: 'Java 21', state: 'checking' } });
     assert.strictEqual(rows[0].state, 'waiting');
   });
 
+  test('the title comes from the manifest, not the file', () => {
+    const rows = rowsBeforeRun([jdk], { jdk: { title: 'Old title', state: 'failed' } });
+    assert.strictEqual(rows[0].title, 'Java 21');
+  });
+
   test('a dependency loop leaves the written order, for setup to report', () => {
-    const rows = rowsBeforeRun([{ id: 'a', check: 'x', dependsOn: ['b'] }, { id: 'b', check: 'x', dependsOn: ['a'] }], {}, {});
+    const rows = rowsBeforeRun([{ id: 'a', check: 'x', dependsOn: ['b'] }, { id: 'b', check: 'x', dependsOn: ['a'] }], {});
     assert.deepStrictEqual(rows.map(r => r.id), ['a', 'b']);
   });
 });

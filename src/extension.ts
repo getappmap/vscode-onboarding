@@ -3,14 +3,11 @@ import { getAgentHost } from './agent/agentHost';
 import { troubleshootPrompt } from './agent/prompts';
 import { Entry, MANIFEST_FILE, Manifest, combineLayers, readManifest } from './manifest/manifest';
 import { ManifestMcpProvider, PROVIDER_ID } from './connections/mcpServers';
-import { EntryStatus, SetupReport, rowsBeforeRun } from './report/report';
+import { EntryStatus, SetupReport, allOf, rowsBeforeRun } from './report/report';
+import { STATUS_DIR, STATUS_FILE, StatusRecorder, emptyStatus, provenFrom, readStatus } from './report/statusFile';
 import { runSetup } from './setup/runSetup';
 import { CheckEntriesTool } from './tools/checkEntriesTool';
 import { fetchOrgSettings, readSecret } from './company/company';
-
-// Kept per workspace, on this computer only.
-const PROVEN_KEY = 'onboarding.proven';            // entry id -> definition hash
-const LAST_RESULTS_KEY = 'onboarding.lastResults'; // entry id -> EntryStatus
 
 const RUN_FIX = 'Run Fix';
 
@@ -23,7 +20,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const report = new SetupReport();
   const mcp = new ManifestMcpProvider(readSecret);
-  const state = context.workspaceState;
+
+  /** Shows the last results from the status file. Skipped while setup runs, since it shows live results then. */
+  const showLastResults = async () => {
+    if (folder && !running) {
+      report.show(rowsBeforeRun(plan.entries, (await readStatus(folder.uri.fsPath))?.entries ?? {}));
+    }
+  };
 
   const reload = async () => {
     if (!folder) {
@@ -50,9 +53,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     plan = combineLayers(project ? [...layers, project] : layers);
     mcp.update(plan.mcpServers);
-    if (!running) {
-      report.show(rowsBeforeRun(plan.entries, state.get(LAST_RESULTS_KEY, {}), state.get(PROVEN_KEY, {})));
-    }
+    await showLastResults();
     // TODO: warn about guessed values whose README text changed (findStale, notifyStale).
   };
 
@@ -103,25 +104,27 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
 
     running = true;
-    const proven = new Map(Object.entries(state.get<Record<string, string>>(PROVEN_KEY, {})));
+    const status = await readStatus(folder.uri.fsPath) ?? emptyStatus();
+    const proven = provenFrom(status);
+    const recorder = new StatusRecorder(folder.uri.fsPath, status, proven,
+      err => log.error(`Could not write ${STATUS_DIR}/${STATUS_FILE}: ${err.message}`));
     try {
       const statuses = await vscode.window.withProgress(
         { location: vscode.ProgressLocation.Notification, title: 'Project setup', cancellable: true },
         (progress, token) => {
           report.attachProgress(progress);
           return runSetup(plan.entries, {
-            folder: folder.uri, preApproved, readSecrets, askToFix, reporter: report, token, proven, reprove,
+            folder: folder.uri, preApproved, readSecrets, askToFix, reporter: allOf(report, recorder), token, proven, reprove,
           });
         });
-      await state.update(LAST_RESULTS_KEY, Object.fromEntries(statuses.map(s => [s.id, s])));
       return statuses;
     } catch (err) {
       log.error((err as Error).message);
       void vscode.window.showErrorMessage(`Project setup stopped. ${firstLine(err)}`);
       return undefined;
     } finally {
+      await recorder.saved();
       running = false;
-      await state.update(PROVEN_KEY, Object.fromEntries(proven));
     }
   };
 
@@ -154,6 +157,13 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     context.subscriptions.push(watcher, watcher.onDidChange(onChange), watcher.onDidCreate(onChange),
       watcher.onDidDelete(onChange));
     // TODO: also watch **/*.md for the README check.
+
+    // Another window, or a person, may change the results.
+    const statusWatcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(folder, `${STATUS_DIR}/${STATUS_FILE}`));
+    const onStatusChange = () => void showLastResults();
+    context.subscriptions.push(statusWatcher, statusWatcher.onDidChange(onStatusChange),
+      statusWatcher.onDidCreate(onStatusChange), statusWatcher.onDidDelete(onStatusChange));
   }
   await reload();
 }

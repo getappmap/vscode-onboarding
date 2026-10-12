@@ -52,8 +52,12 @@ with esbuild.
 
 Setup remembers each entry it has proven on this computer and does not run it again until
 its commands change. To run everything again, use **Onboarding: Run Project Setup, Proving
-Everything Again**. What it remembers is kept in VS Code's storage for that workspace, not in
-the repository.
+Everything Again**.
+
+Results are written to `.onboarding/status.yaml` in the project, as setup runs: each entry's
+state, details, when it last ran, and whether it was proven. The list reads this file, and
+redraws when it changes. It holds results for this computer only: the folder has its own
+`.gitignore`, so it is never committed. Delete the file to start fresh.
 
 After changing code, reload the second window (Developer: Reload Window) to pick up the
 new build.
