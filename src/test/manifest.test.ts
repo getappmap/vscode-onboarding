@@ -75,6 +75,19 @@ suite('Manifest: reading', () => {
     assert.strictEqual(manifest.entries[0].from?.date, '2026-10-10');
   });
 
+  test('reads a troubleshooting note', () => {
+    const manifest = parseManifest([
+      'entries:',
+      '  - id: jdk',
+      '    uses: jdk',
+      '    troubleshooting: |',
+      '      Usually fixed by setting JAVA_HOME.',
+      '      Reinstalling the JDK does not help.',
+    ].join('\n'));
+    assert.strictEqual(manifest.entries[0].troubleshooting,
+      'Usually fixed by setting JAVA_HOME.\nReinstalling the JDK does not help.\n');
+  });
+
   test('reads MCP servers', () => {
     const manifest = parseManifest([
       'mcpServers:',

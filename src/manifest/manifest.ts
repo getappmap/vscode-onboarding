@@ -29,6 +29,7 @@ export interface Entry {
   env?: Record<string, string>;      // plain values passed to the commands
   secrets?: Record<string, string>;  // ENV_NAME -> secret store path, never a value
   failMessage?: string;
+  troubleshooting?: string;          // sent to the agent when it helps with a failure
   from?: Provenance;
 }
 
@@ -105,7 +106,7 @@ export function validateManifest(data: unknown, source = MANIFEST_FILE): Manifes
 }
 
 const ENTRY_KEYS = ['id', 'title', 'uses', 'with', 'check', 'fix', 'prove', 'dependsOn', 'needs',
-  'env', 'secrets', 'failMessage', 'from'];
+  'env', 'secrets', 'failMessage', 'troubleshooting', 'from'];
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const SOURCES: Provenance['source'][] = ['person', 'reference', 'guessed', 'confirmed'];
@@ -138,6 +139,7 @@ function readEntry(data: unknown, path: string, v: Validator): Entry {
     env: v.textMap(data.env, `${at}.env`, ENV_NAME_PATTERN),
     secrets: v.textMap(data.secrets, `${at}.secrets`, ENV_NAME_PATTERN),
     failMessage: v.text(data.failMessage, `${at}.failMessage`),
+    troubleshooting: v.text(data.troubleshooting, `${at}.troubleshooting`),
     from: readProvenance(data.from, `${at}.from`, v),
   });
 
