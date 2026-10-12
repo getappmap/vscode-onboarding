@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import {
   Manifest, ManifestError, combineLayers, parseManifest, readManifest, validateManifest,
-} from '../manifest/manifest';
+} from '../../manifest/manifest';
 
 /** Runs fn and returns the ManifestError it throws. */
 function problemsOf(fn: () => unknown): string[] {
@@ -24,7 +24,7 @@ function assertProblem(problems: string[], text: string): void {
 
 suite('Manifest: reading', () => {
   test('reads the sample project manifest', async () => {
-    const folder = vscode.workspace.workspaceFolders![0].uri;
+    const folder = vscode.Uri.file(path.join(__dirname, '..', '..', '..', 'test-fixtures', 'sample-project'));
     const manifest = await readManifest(folder);
 
     assert.ok(manifest);

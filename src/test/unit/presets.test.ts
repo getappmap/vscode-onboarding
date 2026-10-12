@@ -5,9 +5,9 @@ import * as http from 'http';
 import type { AddressInfo } from 'net';
 import * as os from 'os';
 import * as path from 'path';
-import type { Entry } from '../manifest/manifest';
-import { PRESET_NAMES, expandPreset } from '../setup/presets';
-import { runCommand } from '../setup/runCommand';
+import type { Entry } from '../../manifest/manifest';
+import { PRESET_NAMES, expandPreset } from '../../setup/presets';
+import { runCommand } from '../../setup/runCommand';
 
 /** Runs the expanded entry's check command and says whether it passed. */
 async function checkPasses(entry: Entry, cwd: string, env: Record<string, string> = {}): Promise<boolean> {

@@ -12,23 +12,6 @@ Design documents:
 - [Onboarding Extension Build Recipe](https://claude.ai/code/artifact/74fe1420-4a60-43fe-9971-89539b11acee): the files, stubs and steps this code follows
 - [Onboarding Manifest Reference](https://claude.ai/code/artifact/e748a02a-73f5-416c-b748-f50e3e1830f7): the manifest format and how setup works
 
-## Status
-
-The extension is being built in phases. Parts not yet built are stubs that throw `TODO` errors.
-
-| Phase | What | State |
-|---|---|---|
-| 0 | Project, `package.json` contributions, compiling stubs | Done |
-| 1 | Manifest: read, check, combine layers | Done |
-| 2 | Run one command in PowerShell or `sh` | Not started |
-| 3 | Setup runner: check, fix, prove each entry | Not started |
-| 4 | Progress, Project Setup list, Run Setup command | Not started |
-| 5 | Org settings server and secret store | Not started |
-| 6 | MCP servers for Copilot | Not started |
-| 7 | Copilot: check tool, skills, Ask Copilot | Not started |
-| 8 | Warn when README text behind a guessed value changes | Not started |
-| 9 | Test on Windows, package, publish | Not started |
-
 ## Developer setup
 
 You need:
@@ -53,7 +36,8 @@ npm install
 | Rebuild on every save | `npm run watch` |
 | Type-check only | `npm run check-types` |
 | Lint | `npm run lint` |
-| Run all tests | `npm test` |
+| Unit tests, in plain Node | `npm test` |
+| Tests that need VS Code | `npm run test:vscode` |
 | Make a `.vsix` | `npx vsce package` |
 
 `npm run compile` type-checks, lints, then bundles `src/extension.ts` into `dist/extension.js`
@@ -72,26 +56,48 @@ new build.
 
 ## Tests
 
-```bash
-npm test
-```
+There are two test suites. Most tests run in plain Node; only the few that need real
+VS Code run inside it.
 
-This compiles the tests to `out/`, then runs them inside real VS Code, twice:
+| Command | Runs | Where | Tests |
+|---|---|---|---|
+| `npm test` | `src/test/unit/` | Plain Node + Mocha, with a fake `vscode` module | Almost all |
+| `npm run test:vscode` | `src/test/vscode/` | Real VS Code, twice (below) | Only what needs VS Code |
+
+Both compile the tests to `out/` first.
+
+### Unit tests: `npm test`
+
+Mocha runs the tests directly in Node (settings in `.mocharc.json`). Code under test that
+imports `vscode` gets the fake in `src/test/unit/vscode.fake.ts` instead, set up by
+`src/test/unit/setup.ts`. The fake holds only the parts of the VS Code API the code uses
+today. When code starts using more, add it to the fake, copying how the real API behaves.
+
+Put a new test here unless it truly needs VS Code. These tests are fast, and AppMap can
+record them, which it cannot do inside VS Code.
+
+### VS Code tests: `npm run test:vscode`
+
+These run inside real VS Code, for things a fake cannot check, such as the extension
+activating and its `package.json` contributions loading. Each run opens
+`test-fixtures/sample-project` as the workspace:
 
 | Run | VS Code version | Why |
 |---|---|---|
 | `oldest` | 1.134.0 | The lowest version in `engines.vscode` |
 | `newest` | latest stable | Catches changes in new releases |
 
-The first run downloads both versions into `.vscode-test/`. The tests open
-`test-fixtures/sample-project` as the workspace.
+The first run downloads both versions into `.vscode-test/`. On a Linux build server with no
+display, run `xvfb-run -a npm run test:vscode`.
 
-- Tests live in `src/test/` and use Mocha's `suite` / `test`.
+### For both
+
+- Tests use Mocha's `suite` / `test`.
 - Test only the parts that need no AI. Keep Copilot out of tests, because language model
   calls are rate limited.
-- Setup commands differ between PowerShell and `sh`, so run the tests on Windows and on
-  macOS or Linux before a release.
-- On a Linux build server with no display, run `xvfb-run -a npm test`.
+- Some unit tests run real commands, such as `sleep`, `java -version` and `curl` against a
+  local test server, in temporary folders. Each has an `sh` and a PowerShell form, so run
+  the tests on Windows and on macOS or Linux before a release.
 
 ## Project layout
 
@@ -110,7 +116,8 @@ src/
   connections/mcpServers.ts   Hands the manifest's MCP servers to Copilot
   tools/checkEntriesTool.ts   Lets Copilot run check commands
   company/company.ts          Org settings server and secret store
-  test/                       Tests
+  test/unit/                  Unit tests, run in plain Node with a fake vscode module
+  test/vscode/                Tests that need real VS Code
 skills/                       Copilot skills shipped with the extension
 test-fixtures/sample-project  Workspace the tests open
 ```
@@ -126,7 +133,8 @@ Keep the extension within a few months of the current VS Code. VS Code ships wee
 | `@types/node` | `24.x` | Match the Node that VS Code runs extensions on (24 in 1.134 to 1.141) |
 | `typescript` | `~6.0.3` | Move to 7 when `typescript-eslint` supports it |
 
-To raise the minimum VS Code version, change these three together, then run `npm test`:
+To raise the minimum VS Code version, change these three together, then run both test
+suites:
 
 - `engines.vscode` in `package.json`
 - `@types/vscode` in `package.json` (then `npm install`)
