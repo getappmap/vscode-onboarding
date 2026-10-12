@@ -14,12 +14,12 @@ const settle = () => new Promise(resolve => setImmediate(resolve));
 suite('Report: rows from the status file', () => {
   test('each entry shows its last result; one never run waits', () => {
     const rows = rowsBeforeRun([gradle, jdk, { id: 'new', check: 'x' }], {
-      jdk: { title: 'Java 21', state: 'ready', detail: 'Proven earlier.', proven: definitionHash(jdk) },
+      jdk: { title: 'Java 21', state: 'ready', detail: 'Proven earlier.', because: 'proven-earlier', proven: definitionHash(jdk) },
       gradle: { title: 'gradle', state: 'failed', detail: 'Its check failed.' },
     });
 
     assert.deepStrictEqual(rows, [
-      { id: 'jdk', title: 'Java 21', state: 'ready', detail: 'Proven earlier.' },
+      { id: 'jdk', title: 'Java 21', state: 'ready', detail: 'Proven earlier.', because: 'proven-earlier' },
       { id: 'gradle', title: 'gradle', state: 'failed', detail: 'Its check failed.' },
       { id: 'new', title: 'new', state: 'waiting' },
     ]);
@@ -137,9 +137,16 @@ suite('Report: rows in the list', () => {
   });
 
   test('a row proven earlier says so', () => {
-    const item = report.getTreeItem({ id: 'jdk', title: 'Java 21', state: 'ready', detail: 'Proven earlier.' });
+    const item = report.getTreeItem({ id: 'jdk', title: 'Java 21', state: 'ready', detail: 'Proven earlier.', because: 'proven-earlier' });
     assert.strictEqual(item.description, 'Ready, proven earlier');
     assert.deepStrictEqual(item.iconPath, new vscode.ThemeIcon('pass', new vscode.ThemeColor('testing.iconPassed')));
+  });
+
+  test('a skipped row says why', () => {
+    const missing = report.getTreeItem({ id: 'gradle', title: 'gradle', state: 'skipped', because: 'dependency-missing' });
+    assert.strictEqual(missing.description, 'Skipped, dependency missing');
+    const cancelled = report.getTreeItem({ id: 'gradle', title: 'gradle', state: 'skipped', because: 'cancelled' });
+    assert.strictEqual(cancelled.description, 'Skipped, cancelled');
   });
 
   test('a running row spins', () => {

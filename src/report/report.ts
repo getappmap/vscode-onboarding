@@ -8,11 +8,15 @@ export type EntryState =
   | 'waiting' | 'checking' | 'fixing' | 'proving'
   | 'ready' | 'failed' | 'skipped' | 'needs-approval';
 
+/** Why an entry ended as it did, when the state alone does not say. */
+export type Because = 'proven-earlier' | 'dependency-missing' | 'cancelled';
+
 export interface EntryStatus {
   id: string;
   title: string;
   state: EntryState;
   detail?: string;     // plain words; the last lines of output when it failed
+  because?: Because;
 }
 
 /** What setup tells the developer while it runs. The runner knows nothing else about the UI. */
@@ -46,6 +50,12 @@ const STATE_ICON: Record<EntryState, [icon: string, color?: string]> = {
   'needs-approval': ['shield', 'list.warningForeground'],
 };
 
+const BECAUSE_TEXT: Record<Because, string> = {
+  'proven-earlier': 'proven earlier',
+  'dependency-missing': 'dependency missing',
+  'cancelled': 'cancelled',
+};
+
 const RUNNING: EntryState[] = ['checking', 'fixing', 'proving'];
 
 /**
@@ -66,7 +76,11 @@ export function rowsBeforeRun(entries: Entry[], records: Record<string, EntryRec
     const usable = record && !RUNNING.includes(record.state) && record.state !== 'waiting'
       && (record.state !== 'ready' || record.proven === currentHash(entry));
     return usable
-      ? { id: entry.id, title, state: record.state, ...(record.detail ? { detail: record.detail } : {}) }
+      ? {
+        id: entry.id, title, state: record.state,
+        ...(record.detail ? { detail: record.detail } : {}),
+        ...(record.because ? { because: record.because } : {}),
+      }
       : { id: entry.id, title, state: 'waiting' };
   });
 }
@@ -151,7 +165,7 @@ export class SetupReport implements SetupReporter, vscode.TreeDataProvider<Entry
   getTreeItem(status: EntryStatus): vscode.TreeItem {
     const item = new vscode.TreeItem(status.title, vscode.TreeItemCollapsibleState.None);
     item.id = status.id;
-    item.description = status.detail === 'Proven earlier.' ? 'Ready, proven earlier' : STATE_TEXT[status.state];
+    item.description = status.because ? `${STATE_TEXT[status.state]}, ${BECAUSE_TEXT[status.because]}` : STATE_TEXT[status.state];
     const [icon, color] = STATE_ICON[status.state];
     item.iconPath = new vscode.ThemeIcon(icon, color ? new vscode.ThemeColor(color) : undefined);
     item.contextValue = status.state;

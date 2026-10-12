@@ -1,7 +1,7 @@
 import { createHash } from 'crypto';
 import type * as vscode from 'vscode';
 import type { Command, Entry } from '../manifest/manifest';
-import type { EntryState, EntryStatus, SetupReporter } from '../report/report';
+import type { Because, EntryState, EntryStatus, SetupReporter } from '../report/report';
 import { expandPreset } from './presets';
 import { CommandResult, commandFor, runCommand } from './runCommand';
 
@@ -92,8 +92,10 @@ export function inDependencyOrder(entries: Entry[]): Entry[] {
 export async function runSetup(entries: Entry[], ctx: SetupContext): Promise<EntryStatus[]> {
   const ordered = inDependencyOrder(entries);
   const statuses = new Map<string, EntryStatus>();
-  const report = (entry: Entry, state: EntryState, detail?: string): EntryStatus => {
-    const status: EntryStatus = { id: entry.id, title: entry.title ?? entry.id, state, ...(detail ? { detail } : {}) };
+  const report = (entry: Entry, state: EntryState, detail?: string, because?: Because): EntryStatus => {
+    const status: EntryStatus = {
+      id: entry.id, title: entry.title ?? entry.id, state, ...(detail ? { detail } : {}), ...(because ? { because } : {}),
+    };
     statuses.set(entry.id, status);
     if (state === 'failed' || state === 'needs-approval') {
       ctx.proven.delete(entry.id);
@@ -105,13 +107,15 @@ export async function runSetup(entries: Entry[], ctx: SetupContext): Promise<Ent
   ctx.reporter.begin(ordered);
   for (const entry of ordered) {
     if (ctx.token.isCancellationRequested) {
-      report(entry, 'skipped', 'Setup was cancelled.');
+      report(entry, 'skipped', 'Setup was cancelled.', 'cancelled');
       continue;
     }
     const blocker = (entry.dependsOn ?? []).find(id => statuses.get(id)?.state !== 'ready');
     if (blocker !== undefined) {
       const known = entries.some(e => e.id === blocker);
-      report(entry, 'skipped', known ? `Waits for ${blocker}, which is not ready.` : `Depends on "${blocker}", which is not in the setup plan.`);
+      report(entry, 'skipped',
+        known ? `Waits for ${blocker}, which is not ready.` : `Depends on "${blocker}", which is not in the setup plan.`,
+        'dependency-missing');
       continue;
     }
     await setUpOne(entry, ctx, report);
@@ -122,7 +126,7 @@ export async function runSetup(entries: Entry[], ctx: SetupContext): Promise<Ent
   return result;
 }
 
-type Report = (entry: Entry, state: EntryState, detail?: string) => EntryStatus;
+type Report = (entry: Entry, state: EntryState, detail?: string, because?: Because) => EntryStatus;
 
 async function setUpOne(written: Entry, ctx: SetupContext, report: Report): Promise<void> {
   let entry: Entry;
@@ -135,7 +139,7 @@ async function setUpOne(written: Entry, ctx: SetupContext, report: Report): Prom
 
   const hash = definitionHash(entry);
   if (!ctx.reprove && ctx.proven.get(entry.id) === hash) {
-    report(entry, 'ready', 'Proven earlier.');
+    report(entry, 'ready', 'Proven earlier.', 'proven-earlier');
     return;
   }
 
@@ -158,7 +162,7 @@ async function setUpOne(written: Entry, ctx: SetupContext, report: Report): Prom
     { secrets: Object.values(secrets) });
   // A command stopped by Cancel ends the entry as skipped, not failed.
   const stoppedByCancel = (result: CommandResult) => result.stopped === 'cancelled'
-    && report(entry, 'skipped', 'Setup was cancelled.');
+    && report(entry, 'skipped', 'Setup was cancelled.', 'cancelled');
 
   if (!entry.check) {
     report(entry, 'failed', 'It has no check command, so there is no way to tell whether it is in place.');

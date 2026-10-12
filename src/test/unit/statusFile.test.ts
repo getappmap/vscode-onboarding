@@ -75,7 +75,7 @@ suite('Status file: recording a run', () => {
     recorder.update({ id: 'jdk', title: 'Java 21', state: 'checking' });
     proven.set('jdk', 'hash-1'); // runSetup does this just before reporting ready
     recorder.update({ id: 'jdk', title: 'Java 21', state: 'ready' });
-    recorder.update({ id: 'vpn', title: 'vpn', state: 'failed', detail: 'Not connected.' });
+    recorder.update({ id: 'vpn', title: 'vpn', state: 'skipped', detail: 'Waits for proxy.', because: 'dependency-missing' });
     recorder.end();
     await recorder.saved();
 
@@ -84,7 +84,7 @@ suite('Status file: recording a run', () => {
     assert.strictEqual(status.run_finished, '2026-10-12T09:03:00.000Z');
     assert.deepStrictEqual(status.entries, {
       jdk: { title: 'Java 21', state: 'ready', last_ran: '2026-10-12T09:01:00.000Z', proven: 'hash-1' },
-      vpn: { title: 'vpn', state: 'failed', detail: 'Not connected.', last_ran: '2026-10-12T09:02:00.000Z' },
+      vpn: { title: 'vpn', state: 'skipped', detail: 'Waits for proxy.', because: 'dependency-missing', last_ran: '2026-10-12T09:02:00.000Z' },
     });
     assert.strictEqual(status.platform, process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : 'linux');
   });

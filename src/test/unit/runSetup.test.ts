@@ -147,6 +147,7 @@ suite('runSetup: running entries', function () {
     assert.ok(!exists('tool'));
     assert.match(result[0].detail!, /^Its check failed, and you chose not to run the fix\.\nInstall the tool\./);
     assert.strictEqual(result[1].detail, 'Waits for tool, which is not ready.');
+    assert.strictEqual(result[1].because, 'dependency-missing');
   });
 
   test('a fix that needs another team waits for their approval, without asking', async () => {
@@ -200,6 +201,7 @@ suite('runSetup: running entries', function () {
     const result = await runSetup([{ id: 'app', check: 'exit 0', dependsOn: ['org-proxy'] }], ctx);
     assert.strictEqual(result[0].state, 'skipped');
     assert.strictEqual(result[0].detail, 'Depends on "org-proxy", which is not in the setup plan.');
+    assert.strictEqual(result[0].because, 'dependency-missing');
   });
 
   test('runs entries in dependency order and reports them in that order', async () => {
@@ -258,6 +260,8 @@ suite('runSetup: running entries', function () {
     ], ctx);
     assert.deepStrictEqual(states(result), { quick: 'ready', slow: 'skipped', later: 'skipped' });
     assert.strictEqual(result[2].detail, 'Setup was cancelled.');
+    assert.strictEqual(result[1].because, 'cancelled', 'stopped part way');
+    assert.strictEqual(result[2].because, 'cancelled', 'never started');
   });
 });
 
@@ -284,7 +288,7 @@ suite('runSetup: proving once', function () {
     const { ctx, events, secretReads } = context(folder, { proven });
     const result = await runSetup([entry], ctx);
 
-    assert.deepStrictEqual(result, [{ id: 'tool', title: 'tool', state: 'ready', detail: 'Proven earlier.' }]);
+    assert.deepStrictEqual(result, [{ id: 'tool', title: 'tool', state: 'ready', detail: 'Proven earlier.', because: 'proven-earlier' }]);
     assert.deepStrictEqual(events, ['begin tool', 'tool ready', 'end 1']);
     assert.deepStrictEqual(secretReads, []);
     assert.ok(!exists('checked') && !exists('proved'));

@@ -1,4 +1,4 @@
-# Project Onboarding
+# Onboarding
 
 A VS Code extension that sets up a developer's computer for a code repository.
 

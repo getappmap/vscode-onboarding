@@ -3,7 +3,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { parse, stringify } from 'yaml';
 import type { Entry } from '../manifest/manifest';
-import type { EntryState, EntryStatus, SetupReporter } from './report';
+import type { Because, EntryState, EntryStatus, SetupReporter } from './report';
 
 /**
  * This computer's setup results for one project, in `.onboarding/status.yaml`. Setup writes
@@ -17,6 +17,7 @@ export interface EntryRecord {
   title: string;
   state: EntryState;
   detail?: string;
+  because?: Because;
   last_ran?: string;   // when this entry last finished
   proven?: string;     // definitionHash of the entry when it was proven on this computer
 }
@@ -47,11 +48,11 @@ export async function readStatus(folder: string): Promise<Status | undefined> {
 export async function writeStatus(folder: string, status: Status): Promise<void> {
   const dir = path.join(folder, STATUS_DIR);
   await fs.mkdir(dir, { recursive: true });
-  await fs.writeFile(path.join(dir, '.gitignore'), '# Written by the Project Onboarding extension. Results for this computer only.\n*\n',
+  await fs.writeFile(path.join(dir, '.gitignore'), '# Written by the Onboarding extension. Results for this computer only.\n*\n',
     { flag: 'wx' }).catch(() => undefined);
   const file = statusPath(folder);
   const temp = `${file}.${process.pid}.tmp`;
-  await fs.writeFile(temp, `# Setup results for this computer. Written by the Project Onboarding extension.\n${stringify(status)}`);
+  await fs.writeFile(temp, `# Setup results for this computer. Written by the Onboarding extension.\n${stringify(status)}`);
   await fs.rename(temp, file);
 }
 
@@ -107,6 +108,9 @@ export class StatusRecorder implements SetupReporter {
     const record: EntryRecord = { title: status.title, state: status.state };
     if (status.detail) {
       record.detail = status.detail;
+    }
+    if (status.because) {
+      record.because = status.because;
     }
     const lastRan = finished ? this.now().toISOString() : previous?.last_ran;
     if (lastRan) {

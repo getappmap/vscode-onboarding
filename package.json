@@ -1,6 +1,6 @@
 {
   "name": "onboarding",
-  "displayName": "Project Onboarding",
+  "displayName": "Onboarding",
   "description": "Sets up a developer's computer for this repository",
   "publisher": "your-company",
   "version": "0.0.1",
@@ -126,7 +126,7 @@
     "mcpServerDefinitionProviders": [
       {
         "id": "onboarding.servers",
-        "label": "Project Onboarding"
+        "label": "Onboarding"
       }
     ],
     "languageModelTools": [
