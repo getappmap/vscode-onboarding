@@ -7,7 +7,7 @@ import type { EntryState, EntryStatus, SetupReporter } from './report';
 
 /**
  * This computer's setup results for one project, in `.onboarding/status.yaml`. Setup writes
- * it as it runs; the Project Setup list and anything else that shows results read it.
+ * it as it runs; the Onboarding list and anything else that shows results read it.
  * The folder holds its own .gitignore, so the file is never committed.
  */
 export const STATUS_DIR = '.onboarding';

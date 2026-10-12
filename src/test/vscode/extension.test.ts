@@ -16,7 +16,7 @@ suite('Extension', () => {
     }
   });
 
-  test('the Project Setup list has its own Activity Bar icon', async () => {
+  test('the Onboarding list has its own Activity Bar icon', async () => {
     // VS Code adds this command for each Activity Bar container it accepts.
     const open = 'workbench.view.extension.onboarding';
     assert.ok((await vscode.commands.getCommands(true)).includes(open), 'no Activity Bar container');

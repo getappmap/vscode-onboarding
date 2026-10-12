@@ -99,7 +99,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return undefined;
     }
     if (running) {
-      void vscode.window.showInformationMessage('Project setup is already running.');
+      void vscode.window.showInformationMessage('Onboarding setup is already running.');
       return undefined;
     }
 
@@ -110,7 +110,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       err => log.error(`Could not write ${STATUS_DIR}/${STATUS_FILE}: ${err.message}`));
     try {
       const statuses = await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: 'Project setup', cancellable: true },
+        { location: vscode.ProgressLocation.Notification, title: 'Onboarding', cancellable: true },
         (progress, token) => {
           report.attachProgress(progress);
           return runSetup(plan.entries, {
@@ -120,7 +120,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return statuses;
     } catch (err) {
       log.error((err as Error).message);
-      void vscode.window.showErrorMessage(`Project setup stopped. ${firstLine(err)}`);
+      void vscode.window.showErrorMessage(`Onboarding setup stopped. ${firstLine(err)}`);
       return undefined;
     } finally {
       await recorder.saved();

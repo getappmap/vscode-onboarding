@@ -25,13 +25,13 @@
     "commands": [
       {
         "command": "onboarding.runSetup",
-        "title": "Run Project Setup",
+        "title": "Run Setup",
         "category": "Onboarding",
         "icon": "$(play)"
       },
       {
         "command": "onboarding.reproveSetup",
-        "title": "Run Project Setup, Proving Everything Again",
+        "title": "Run Setup, Proving Everything Again",
         "category": "Onboarding"
       },
       {
@@ -56,8 +56,8 @@
       "activitybar": [
         {
           "id": "onboarding",
-          "title": "Project Setup",
-          "icon": "media/project-setup.svg"
+          "title": "Onboarding",
+          "icon": "media/onboarding.svg"
         }
       ]
     },
@@ -65,7 +65,7 @@
       "onboarding": [
         {
           "id": "onboarding.report",
-          "name": "Project Setup"
+          "name": "Onboarding"
         }
       ]
     },
@@ -133,7 +133,7 @@
       {
         "name": "onboarding_check_entries",
         "toolReferenceName": "checkSetup",
-        "displayName": "Check Project Setup",
+        "displayName": "Check Onboarding Setup",
         "modelDescription": "Runs the check command of one entry, or every entry, in onboarding.yaml and returns which are ready with the last lines of output. Never changes anything and never runs fixes.",
         "canBeReferencedInPrompt": true,
         "inputSchema": {

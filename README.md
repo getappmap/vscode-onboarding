@@ -4,7 +4,7 @@ A VS Code extension that sets up a developer's computer for a code repository.
 
 Each repository keeps a manifest, `onboarding.yaml`. Each entry in it gives commands to
 check that something is in place, put it in place, and prove it works. The extension runs
-every entry the same way, shows progress and a Project Setup list, and uses GitHub Copilot
+every entry the same way, shows progress and an Onboarding list, and uses GitHub Copilot
 agent mode to help when something fails.
 
 Design: the [Onboarding Manifest Reference](https://claude.ai/code/artifact/e748a02a-73f5-416c-b748-f50e3e1830f7)
@@ -47,12 +47,12 @@ with esbuild.
 2. Press F5. This builds and opens a second VS Code window with the extension loaded.
 3. In that window, open a folder that has an `onboarding.yaml`, such as
    `test-fixtures/sample-project`.
-4. Open **Project Setup** from its icon in the Activity Bar (a clipboard with ticks), then
-   press its play button. Or run **Onboarding: Run Project Setup** from the Command Palette.
+4. Open **Onboarding** from its icon in the Activity Bar (a clipboard with ticks), then
+   press its play button. Or run **Onboarding: Run Setup** from the Command Palette.
 
 Setup remembers each entry it has proven on this computer and does not run it again until
-its commands change. To run everything again, use **Onboarding: Run Project Setup, Proving
-Everything Again**.
+its commands change. To run everything again, use **Onboarding: Run Setup, Proving Everything
+Again**.
 
 Results are written to `.onboarding/status.yaml` in the project, as setup runs: each entry's
 state, details, when it last ran, and whether it was proven. The list reads this file, and
@@ -121,7 +121,7 @@ src/
   setup/runCommand.ts         Runs one command in PowerShell or sh
   setup/presets.ts            Built-in commands for common needs (jdk, ...)
   setup/runSetup.ts           Check, fix, prove each entry in order
-  report/report.ts            Progress notification and Project Setup list
+  report/report.ts            Progress notification and the Onboarding list
   connections/mcpServers.ts   Hands the manifest's MCP servers to Copilot
   tools/checkEntriesTool.ts   Lets Copilot run check commands
   company/company.ts          Org settings server and secret store

@@ -16,7 +16,7 @@ const STATE_WORDS: Partial<Record<EntryStatus['state'], string>> = {
 export function troubleshootPrompt(items: { status: EntryStatus; entry?: Entry }[]): string {
   const names = items.map(({ status }) => `"${status.title}"`).join(', ');
   const parts = [
-    `/troubleshooter Project setup could not finish ${names} in this repository. Help me find out why and fix it.`,
+    `/troubleshooter Onboarding setup could not finish ${names} in this repository. Help me find out why and fix it.`,
   ];
   for (const { status, entry } of items) {
     parts.push(`## ${status.title} ${STATE_WORDS[status.state] ?? `is ${status.state}`}`);

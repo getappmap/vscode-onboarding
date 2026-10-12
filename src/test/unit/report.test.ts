@@ -91,7 +91,7 @@ suite('Report: during and after a run', () => {
 
   test('when all are ready, a short summary', () => {
     report.end([{ id: 'jdk', title: 'Java 21', state: 'ready' }]);
-    assert.deepStrictEqual(fake.messages, [{ kind: 'info', message: 'Project setup complete: 1 of 1 ready.', items: [] }]);
+    assert.deepStrictEqual(fake.messages, [{ kind: 'info', message: 'Onboarding complete: 1 of 1 ready.', items: [] }]);
   });
 
   test('when some are not, a warning that offers Copilot', async () => {
@@ -103,7 +103,7 @@ suite('Report: during and after a run', () => {
     report.end(statuses);
     await settle();
 
-    assert.deepStrictEqual(fake.messages, [{ kind: 'warning', message: 'Project setup: 1 of 2 ready.', items: [ASK_COPILOT] }]);
+    assert.deepStrictEqual(fake.messages, [{ kind: 'warning', message: 'Onboarding: 1 of 2 ready.', items: [ASK_COPILOT] }]);
     assert.deepStrictEqual(fake.executed, ['onboarding.askCopilot']);
     assert.deepStrictEqual(report.notReady().map(s => s.id), ['gradle']);
   });

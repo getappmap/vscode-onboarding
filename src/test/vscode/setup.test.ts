@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import type { EntryStatus } from '../../report/report';
 
 // Runs the real commands against test-fixtures/vscode-workspace/onboarding.yaml.
-suite('Run Project Setup', function () {
+suite('Run Setup', function () {
   this.timeout(30_000);
 
   const run = async (command: string) => {

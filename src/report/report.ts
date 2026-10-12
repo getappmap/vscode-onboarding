@@ -89,7 +89,7 @@ export function allOf(...reporters: SetupReporter[]): SetupReporter {
 }
 
 /**
- * The developer-facing report: a "Project Setup" list in the side bar with one row per entry,
+ * The developer-facing report: the "Onboarding" list in its own Activity Bar view with one row per entry,
  * plus a progress notification while setup runs, and a summary when it ends.
  */
 export class SetupReport implements SetupReporter, vscode.TreeDataProvider<EntryStatus> {
@@ -141,10 +141,10 @@ export class SetupReport implements SetupReporter, vscode.TreeDataProvider<Entry
 
     const ready = statuses.filter(s => s.state === 'ready').length;
     if (ready === statuses.length) {
-      void vscode.window.showInformationMessage(`Project setup complete: ${ready} of ${statuses.length} ready.`);
+      void vscode.window.showInformationMessage(`Onboarding complete: ${ready} of ${statuses.length} ready.`);
       return;
     }
-    void vscode.window.showWarningMessage(`Project setup: ${ready} of ${statuses.length} ready.`, ASK_COPILOT)
+    void vscode.window.showWarningMessage(`Onboarding: ${ready} of ${statuses.length} ready.`, ASK_COPILOT)
       .then(choice => choice === ASK_COPILOT && vscode.commands.executeCommand('onboarding.askCopilot'));
   }
 
