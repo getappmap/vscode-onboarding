@@ -3,7 +3,7 @@ import { defineConfig } from '@vscode/test-cli';
 // Test on the oldest VS Code we support (engines.vscode) and on the newest.
 const common = {
   files: 'out/test/vscode/**/*.test.js',
-  workspaceFolder: './test-fixtures/sample-project',
+  workspaceFolder: './test-fixtures/vscode-workspace',
 };
 
 export default defineConfig([

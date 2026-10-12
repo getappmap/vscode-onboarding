@@ -1,0 +1,15 @@
+# Used by the tests in src/test/vscode. Every command is safe to run, and needs no
+# network, secrets or fixes, so setup never stops to ask anything.
+entries:
+  - id: ready-now
+    title: Already in place
+    check: exit 0
+    prove: exit 0
+
+  - id: broken
+    check: echo not-installed; exit 1
+    failMessage: Install it by hand.
+
+  - id: after-broken
+    dependsOn: [broken]
+    check: exit 0

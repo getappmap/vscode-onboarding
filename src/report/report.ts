@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { Entry } from '../manifest/manifest';
+import { expandPreset } from '../setup/presets';
+import { definitionHash, inDependencyOrder } from '../setup/runSetup';
 
 export type EntryState =
   | 'waiting' | 'checking' | 'fixing' | 'proving'
@@ -19,6 +21,65 @@ export interface SetupReporter {
   end(statuses: EntryStatus[]): void;
 }
 
+export const ASK_COPILOT = 'Ask Copilot to Help';
+
+const STATE_TEXT: Record<EntryState, string> = {
+  'waiting': 'Waiting',
+  'checking': 'Checking',
+  'fixing': 'Fixing',
+  'proving': 'Proving',
+  'ready': 'Ready',
+  'failed': 'Failed',
+  'skipped': 'Skipped',
+  'needs-approval': 'Needs approval',
+};
+
+const STATE_ICON: Record<EntryState, [icon: string, color?: string]> = {
+  'waiting': ['circle-outline'],
+  'checking': ['sync~spin'],
+  'fixing': ['sync~spin'],
+  'proving': ['sync~spin'],
+  'ready': ['pass', 'testing.iconPassed'],
+  'failed': ['error', 'testing.iconFailed'],
+  'skipped': ['circle-slash', 'disabledForeground'],
+  'needs-approval': ['shield', 'list.warningForeground'],
+};
+
+const RUNNING: EntryState[] = ['checking', 'fixing', 'proving'];
+
+/**
+ * The rows to show before setup runs, such as when VS Code starts: entries proven with
+ * their current definition are ready, others show their last result, or wait.
+ */
+export function rowsBeforeRun(
+  entries: Entry[], last: Record<string, EntryStatus>, proven: Record<string, string>,
+): EntryStatus[] {
+  let ordered: Entry[];
+  try {
+    ordered = inDependencyOrder(entries);
+  } catch {
+    ordered = entries; // A loop is reported when setup runs.
+  }
+  return ordered.map(entry => {
+    const title = entry.title ?? entry.id;
+    if (isProven(entry, proven)) {
+      return { id: entry.id, title, state: 'ready', detail: 'Proven earlier.' };
+    }
+    const previous = last[entry.id];
+    return previous && previous.state !== 'ready' && !RUNNING.includes(previous.state)
+      ? { ...previous, title }
+      : { id: entry.id, title, state: 'waiting' };
+  });
+}
+
+function isProven(entry: Entry, proven: Record<string, string>): boolean {
+  try {
+    return proven[entry.id] === definitionHash(expandPreset(entry));
+  } catch {
+    return false;
+  }
+}
+
 /**
  * The developer-facing report: a "Project Setup" list in the side bar with one row per entry,
  * plus a progress notification while setup runs, and a summary when it ends.
@@ -27,23 +88,77 @@ export class SetupReport implements SetupReporter, vscode.TreeDataProvider<Entry
   private readonly changed = new vscode.EventEmitter<EntryStatus | undefined>();
   readonly onDidChangeTreeData = this.changed.event;
 
+  private statuses: EntryStatus[] = [];
+  private progress?: vscode.Progress<{ message?: string; increment?: number }>;
+
+  /** Shows rows without running anything. */
+  show(statuses: EntryStatus[]): void {
+    this.statuses = statuses;
+    this.changed.fire(undefined);
+  }
+
+  /** Where progress messages go during the next run. Call before runSetup. */
+  attachProgress(progress: vscode.Progress<{ message?: string; increment?: number }>): void {
+    this.progress = progress;
+  }
+
+  /** Rows that are not ready, for asking Copilot about them. */
+  notReady(): EntryStatus[] {
+    return this.statuses.filter(s => s.state !== 'ready');
+  }
+
   begin(entries: Entry[]): void {
-    // TODO: show every entry as waiting; start the progress notification
+    this.show(entries.map(e => ({ id: e.id, title: e.title ?? e.id, state: 'waiting' })));
   }
 
   update(status: EntryStatus): void {
-    // TODO: update the row and the progress message ("Checking jdk, 2 of 6")
+    const index = this.statuses.findIndex(s => s.id === status.id);
+    if (index < 0) {
+      return;
+    }
+    this.statuses[index] = status;
+    this.changed.fire(undefined);
+
+    const total = this.statuses.length;
+    if (RUNNING.includes(status.state)) {
+      this.progress?.report({ message: `${STATE_TEXT[status.state]} ${status.title}, ${index + 1} of ${total}` });
+    } else {
+      this.progress?.report({ increment: 100 / total });
+    }
   }
 
   end(statuses: EntryStatus[]): void {
-    // TODO: close progress; show "Setup complete" or "3 of 6 ready" with "Ask Copilot to help"
+    this.progress = undefined;
+    this.show(statuses);
+
+    const ready = statuses.filter(s => s.state === 'ready').length;
+    if (ready === statuses.length) {
+      void vscode.window.showInformationMessage(`Project setup complete: ${ready} of ${statuses.length} ready.`);
+      return;
+    }
+    void vscode.window.showWarningMessage(`Project setup: ${ready} of ${statuses.length} ready.`, ASK_COPILOT)
+      .then(choice => choice === ASK_COPILOT && vscode.commands.executeCommand('onboarding.askCopilot'));
   }
 
   getTreeItem(status: EntryStatus): vscode.TreeItem {
-    throw new Error('TODO: title, state icon, detail as tooltip, actions for failed rows');
+    const item = new vscode.TreeItem(status.title, vscode.TreeItemCollapsibleState.None);
+    item.id = status.id;
+    item.description = status.detail === 'Proven earlier.' ? 'Ready, proven earlier' : STATE_TEXT[status.state];
+    const [icon, color] = STATE_ICON[status.state];
+    item.iconPath = new vscode.ThemeIcon(icon, color ? new vscode.ThemeColor(color) : undefined);
+    item.contextValue = status.state;
+
+    const tooltip = new vscode.MarkdownString();
+    tooltip.appendMarkdown(`**${status.title}**: ${STATE_TEXT[status.state]}`);
+    if (status.detail) {
+      tooltip.appendMarkdown('\n\n');
+      tooltip.appendCodeblock(status.detail, 'text');
+    }
+    item.tooltip = tooltip;
+    return item;
   }
 
   getChildren(): EntryStatus[] {
-    throw new Error('TODO: the current statuses, in run order');
+    return this.statuses;
   }
 }

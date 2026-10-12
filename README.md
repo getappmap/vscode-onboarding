@@ -47,7 +47,13 @@ with esbuild.
 2. Press F5. This builds and opens a second VS Code window with the extension loaded.
 3. In that window, open a folder that has an `onboarding.yaml`, such as
    `test-fixtures/sample-project`.
-4. Run **Onboarding: Run Project Setup** from the Command Palette.
+4. Run **Onboarding: Run Project Setup** from the Command Palette, or use the play button on
+   the **Project Setup** list in the Explorer.
+
+Setup remembers each entry it has proven on this computer and does not run it again until
+its commands change. To run everything again, use **Onboarding: Run Project Setup, Proving
+Everything Again**. What it remembers is kept in VS Code's storage for that workspace, not in
+the repository.
 
 After changing code, reload the second window (Developer: Reload Window) to pick up the
 new build.
@@ -77,8 +83,9 @@ record them, which it cannot do inside VS Code.
 ### VS Code tests: `npm run test:vscode`
 
 These run inside real VS Code, for things a fake cannot check, such as the extension
-activating and its `package.json` contributions loading. Each run opens
-`test-fixtures/sample-project` as the workspace:
+activating, its `package.json` contributions loading, and its commands running from start to
+end. Each run opens `test-fixtures/vscode-workspace` as the workspace. Its entries are safe
+commands that never ask anything:
 
 | Run | VS Code version | Why |
 |---|---|---|
@@ -117,7 +124,8 @@ src/
   test/unit/                  Unit tests, run in plain Node with a fake vscode module
   test/vscode/                Tests that need real VS Code
 skills/                       Copilot skills shipped with the extension
-test-fixtures/sample-project  Workspace the tests open
+test-fixtures/sample-project  A realistic manifest: unit tests read it, and you can try it with F5
+test-fixtures/vscode-workspace  Workspace the VS Code tests open: safe commands only
 ```
 
 ## Versions

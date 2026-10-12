@@ -53,3 +53,84 @@ export const workspace = {
     },
   },
 };
+
+/** What the code under test showed or ran, and the answer the next message returns. */
+export const fake = {
+  messages: [] as { kind: 'info' | 'warning' | 'error'; message: string; items: string[] }[],
+  executed: [] as string[],
+  answer: undefined as string | undefined,
+  reset(): void {
+    this.messages = [];
+    this.executed = [];
+    this.answer = undefined;
+  },
+};
+
+function showMessage(kind: 'info' | 'warning' | 'error') {
+  return async (message: string, ...rest: unknown[]): Promise<string | undefined> => {
+    const items = rest.filter((r): r is string => typeof r === 'string');
+    fake.messages.push({ kind, message, items });
+    return fake.answer;
+  };
+}
+
+export const window = {
+  showInformationMessage: showMessage('info'),
+  showWarningMessage: showMessage('warning'),
+  showErrorMessage: showMessage('error'),
+};
+
+export const commands = {
+  async executeCommand(command: string): Promise<unknown> {
+    fake.executed.push(command);
+    return undefined;
+  },
+};
+
+export class EventEmitter<T> {
+  private listeners: ((e: T) => void)[] = [];
+
+  readonly event = (listener: (e: T) => void) => {
+    this.listeners.push(listener);
+    return { dispose: () => (this.listeners = this.listeners.filter(l => l !== listener)) };
+  };
+
+  fire(data: T): void {
+    this.listeners.forEach(l => l(data));
+  }
+}
+
+export enum TreeItemCollapsibleState { None = 0, Collapsed = 1, Expanded = 2 }
+
+export class TreeItem {
+  id?: string;
+  description?: string;
+  iconPath?: ThemeIcon;
+  tooltip?: MarkdownString;
+  contextValue?: string;
+
+  constructor(readonly label: string, readonly collapsibleState = TreeItemCollapsibleState.None) {}
+}
+
+export class ThemeColor {
+  constructor(readonly id: string) {}
+}
+
+export class ThemeIcon {
+  constructor(readonly id: string, readonly color?: ThemeColor) {}
+}
+
+/** Builds the same Markdown text as the real one. */
+export class MarkdownString {
+  value = '';
+
+  appendMarkdown(value: string): this {
+    this.value += value;
+    return this;
+  }
+
+  appendCodeblock(code: string, language = ''): this {
+    this.value += `\n\`\`\`${language}\n${code}\n\`\`\`\n`;
+    return this;
+  }
+}

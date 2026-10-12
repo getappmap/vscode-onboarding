@@ -30,6 +30,11 @@
         "icon": "$(play)"
       },
       {
+        "command": "onboarding.reproveSetup",
+        "title": "Run Project Setup, Proving Everything Again",
+        "category": "Onboarding"
+      },
+      {
         "command": "onboarding.askCopilot",
         "title": "Ask Copilot to Help",
         "category": "Onboarding",
@@ -60,6 +65,11 @@
           "command": "onboarding.askCopilot",
           "when": "view == onboarding.report",
           "group": "navigation"
+        },
+        {
+          "command": "onboarding.reproveSetup",
+          "when": "view == onboarding.report",
+          "group": "more@1"
         }
       ]
     },
