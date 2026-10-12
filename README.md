@@ -18,7 +18,7 @@ You need:
 
 | Tool | Version |
 |---|---|
-| Node.js | 24 LTS (22 also works) |
+| Node.js | 24 (in `.nvmrc`; run `nvm use`). VS Code runs extensions on Node 24 too |
 | VS Code | 1.134 or later |
 | GitHub Copilot | Copilot Chat extension, for phases 6 and 7 |
 
