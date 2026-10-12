@@ -19,7 +19,7 @@ The extension is being built in phases. Parts not yet built are stubs that throw
 | Phase | What | State |
 |---|---|---|
 | 0 | Project, `package.json` contributions, compiling stubs | Done |
-| 1 | Manifest: read, check, combine layers | In progress |
+| 1 | Manifest: read, check, combine layers | Done |
 | 2 | Run one command in PowerShell or `sh` | Not started |
 | 3 | Setup runner: check, fix, prove each entry | Not started |
 | 4 | Progress, Project Setup list, Run Setup command | Not started |

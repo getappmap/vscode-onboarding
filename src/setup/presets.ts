@@ -1,4 +1,4 @@
-import { Entry } from '../manifest/manifest';
+import type { Entry } from '../manifest/manifest';
 
 /**
  * Ready-made commands for very common dependencies. A preset only fills in commands;
@@ -12,6 +12,9 @@ const presets: Record<string, Preset> = {
   'gradle-wrapper': () => ({ check: { windows: 'TODO', posix: 'TODO' } }), // gradlew present and runs
   'http-service': v => ({ check: { windows: 'TODO', posix: 'TODO' } }),    // v.url answers at all
 };
+
+/** The names an entry's `uses` may give. */
+export const PRESET_NAMES: readonly string[] = Object.keys(presets);
 
 /** Returns the entry with the preset's commands filled in where the entry has none. */
 export function expandPreset(entry: Entry): Entry {
