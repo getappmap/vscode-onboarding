@@ -1,0 +1,151 @@
+{
+  "name": "onboarding",
+  "displayName": "Project Onboarding",
+  "description": "Sets up a developer's computer for this repository",
+  "publisher": "your-company",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.134.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "workspaceContains:onboarding.yaml"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": "limited",
+      "description": "Setup commands run only in folders you trust."
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "onboarding.runSetup",
+        "title": "Run Project Setup",
+        "category": "Onboarding",
+        "icon": "$(play)"
+      },
+      {
+        "command": "onboarding.askCopilot",
+        "title": "Ask Copilot to Help",
+        "category": "Onboarding",
+        "icon": "$(copilot)"
+      },
+      {
+        "command": "onboarding.draftManifest",
+        "title": "Draft Manifest",
+        "category": "Onboarding"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "onboarding.report",
+          "name": "Project Setup"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "onboarding.runSetup",
+          "when": "view == onboarding.report",
+          "group": "navigation"
+        },
+        {
+          "command": "onboarding.askCopilot",
+          "when": "view == onboarding.report",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Onboarding",
+      "properties": {
+        "onboarding.orgSettingsUrl": {
+          "type": "string",
+          "default": "",
+          "description": "Company settings server for the Org and Team layers."
+        },
+        "onboarding.secretCommand": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Command that prints one secret; {path} marks where its path goes."
+        }
+      }
+    },
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "onboarding.servers",
+        "label": "Project Onboarding"
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "onboarding_check_entries",
+        "toolReferenceName": "checkSetup",
+        "displayName": "Check Project Setup",
+        "modelDescription": "Runs the check command of one entry, or every entry, in onboarding.yaml and returns which are ready with the last lines of output. Never changes anything and never runs fixes.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "entryId": {
+              "type": "string",
+              "description": "One entry id. Leave out to check every entry."
+            }
+          }
+        }
+      }
+    ],
+    "chatSkills": [
+      {
+        "path": "./skills/manifest-writer/SKILL.md"
+      },
+      {
+        "path": "./skills/text-reader/SKILL.md"
+      },
+      {
+        "path": "./skills/troubleshooter/SKILL.md"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "npm run check-types && npm run lint && node esbuild.js",
+    "watch": "npm-run-all -p watch:*",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "package": "npm run check-types && npm run lint && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "watch-tests": "tsc -p . -w --outDir out",
+    "pretest": "npm run compile-tests && npm run compile && npm run lint",
+    "check-types": "tsc --noEmit",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "24.x",
+    "@types/vscode": "~1.134.0",
+    "@vscode/test-cli": "^0.0.15",
+    "@vscode/test-electron": "^3.0.0",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.5.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.61.1"
+  },
+  "overrides": {
+    "diff": "^8.0.4",
+    "serialize-javascript": "^7.0.6"
+  },
+  "dependencies": {
+    "yaml": "^2.9.1"
+  }
+}

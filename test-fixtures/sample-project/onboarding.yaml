@@ -1,0 +1,46 @@
+# onboarding.yaml: kept in the repository and reviewed like any code change.
+team: payments
+entries:
+  - id: jdk
+    uses: jdk
+    with: { version: "21" }
+    failMessage: Install JDK 21 from the company software portal.
+
+  - id: gradle
+    uses: gradle-wrapper
+    dependsOn: [jdk]
+
+  - id: artifactory-reachable
+    uses: http-service
+    with: { url: "https://company.jfrog.io/artifactory/api/system/ping" }
+    needs: [vpn]
+
+  - id: artifactory-credentials
+    title: Artifactory sign-in for Gradle
+    dependsOn: [gradle, artifactory-reachable]
+    secrets: { ARTIFACTORY_TOKEN: dev/artifactory/token }   # secret store path, never the value
+    check:
+      posix: grep -q '^artifactoryToken=' ~/.gradle/gradle.properties
+      windows: if (-not (Select-String -Quiet -Pattern '^artifactoryToken=' -Path "$HOME\.gradle\gradle.properties")) { exit 1 }
+    fix:
+      posix: printf 'artifactoryUser=%s\nartifactoryToken=%s\n' "$USER" "$ARTIFACTORY_TOKEN" >> ~/.gradle/gradle.properties
+      windows: Add-Content "$HOME\.gradle\gradle.properties" "artifactoryUser=$env:USERNAME", "artifactoryToken=$env:ARTIFACTORY_TOKEN"
+    prove: ./gradlew dependencies --configuration runtimeClasspath --quiet   # same text works in both shells
+    from: { source: guessed, file: README.md, section: "## Building", sha256: 9c2e41d0, date: 2026-10-10 }
+
+  - id: splunk-logging
+    title: Logs reach Splunk
+    needs: [vpn]
+    env: { SPLUNK_HEC_URL: "https://splunk.example.com:8088/services/collector" }
+    secrets: { SPLUNK_HEC_TOKEN: dev/splunk/hec-token }
+    check:
+      posix: test -n "$SPLUNK_HEC_TOKEN"
+      windows: if (-not $env:SPLUNK_HEC_TOKEN) { exit 1 }
+    prove:
+      posix: >-
+        curl --fail --silent --output /dev/null -d '{"event": "onboarding test"}'
+        -H "Authorization: Splunk $SPLUNK_HEC_TOKEN" "$SPLUNK_HEC_URL"
+      windows: >-
+        Invoke-RestMethod -Method Post -Uri $env:SPLUNK_HEC_URL -Body '{"event": "onboarding test"}'
+        -Headers @{ Authorization = "Splunk $env:SPLUNK_HEC_TOKEN" } | Out-Null
+    failMessage: No Splunk token yet. Ask Copilot to open an access request.
