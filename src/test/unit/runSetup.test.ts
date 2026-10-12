@@ -1,0 +1,258 @@
+import * as assert from 'assert';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import * as vscode from 'vscode';
+import type { Command, Entry } from '../../manifest/manifest';
+import type { EntryStatus } from '../../report/report';
+import { SetupContext, inDependencyOrder, runSetup } from '../../setup/runSetup';
+
+// Commands that work in sh and in PowerShell.
+const fileExists = (name: string): Command => ({
+  posix: `test -f ${name}`,
+  windows: `if (-not (Test-Path ${name})) { exit 1 }`,
+});
+const touch = (name: string): Command => ({
+  posix: `touch ${name}`,
+  windows: `New-Item -ItemType File -Force ${name} | Out-Null`,
+});
+const fail = (message: string): Command => `echo ${message}; exit 1`;
+
+/** A setup context that records what the runner reported and asked. */
+function context(folder: string, options: {
+  preApproved?: string[];
+  secrets?: Record<string, string>;
+  answer?: boolean;
+} = {}) {
+  const updates: EntryStatus[] = [];
+  const asked: string[] = [];
+  const secretReads: Record<string, string>[] = [];
+  const events: string[] = [];
+  const token = { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) };
+
+  const ctx: SetupContext = {
+    folder: vscode.Uri.file(folder),
+    preApproved: new Set(options.preApproved ?? []),
+    async readSecrets(paths) {
+      secretReads.push(paths);
+      const values: Record<string, string> = {};
+      for (const [name, secretPath] of Object.entries(paths)) {
+        const value = options.secrets?.[secretPath];
+        if (value !== undefined) {
+          values[name] = value;
+        }
+      }
+      return values;
+    },
+    async askToFix(entry, command) {
+      asked.push(`${entry.id}: ${command}`);
+      return options.answer ?? false;
+    },
+    reporter: {
+      begin: entries => events.push(`begin ${entries.map(e => e.id).join(',')}`),
+      update: status => {
+        updates.push(status);
+        events.push(`${status.id} ${status.state}`);
+      },
+      end: statuses => events.push(`end ${statuses.length}`),
+    },
+    token: token as unknown as vscode.CancellationToken,
+  };
+  return { ctx, updates, asked, secretReads, events, token };
+}
+
+function states(statuses: EntryStatus[]): Record<string, string> {
+  return Object.fromEntries(statuses.map(s => [s.id, s.state]));
+}
+
+suite('runSetup: dependency order', () => {
+  const ids = (entries: Entry[]) => entries.map(e => e.id);
+
+  test('keeps the written order when it already works', () => {
+    assert.deepStrictEqual(ids(inDependencyOrder([
+      { id: 'a' }, { id: 'b', dependsOn: ['a'] }, { id: 'c' },
+    ])), ['a', 'b', 'c']);
+  });
+
+  test('moves what an entry depends on ahead of it', () => {
+    assert.deepStrictEqual(ids(inDependencyOrder([
+      { id: 'gradle', dependsOn: ['jdk'] }, { id: 'other' }, { id: 'jdk' },
+    ])), ['jdk', 'gradle', 'other']);
+  });
+
+  test('leaves ids that name no entry for the runner to report', () => {
+    assert.deepStrictEqual(ids(inDependencyOrder([{ id: 'a', dependsOn: ['missing'] }])), ['a']);
+  });
+
+  test('names the loop when entries depend on each other', () => {
+    assert.throws(() => inDependencyOrder([
+      { id: 'a', dependsOn: ['b'] }, { id: 'b', dependsOn: ['c'] }, { id: 'c', dependsOn: ['a'] },
+    ]), /in a loop: a → b → c → a/);
+  });
+});
+
+suite('runSetup: running entries', function () {
+  this.timeout(20_000);
+  let folder: string;
+  setup(() => {
+    folder = fs.mkdtempSync(path.join(os.tmpdir(), 'onboarding-setup-'));
+  });
+  teardown(() => fs.rmSync(folder, { recursive: true, force: true }));
+  const exists = (name: string) => fs.existsSync(path.join(folder, name));
+
+  test('an entry already in place is proved and ready, and its fix does not run', async () => {
+    fs.writeFileSync(path.join(folder, 'tool'), '');
+    const { ctx, events } = context(folder);
+    const result = await runSetup([
+      { id: 'tool', check: fileExists('tool'), fix: touch('fix-ran'), prove: touch('proved') },
+    ], ctx);
+
+    assert.deepStrictEqual(result, [{ id: 'tool', title: 'tool', state: 'ready' }]);
+    assert.deepStrictEqual(events, ['begin tool', 'tool checking', 'tool proving', 'tool ready', 'end 1']);
+    assert.ok(exists('proved'));
+    assert.ok(!exists('fix-ran'));
+  });
+
+  test('a fix the Org approved runs without asking', async () => {
+    const { ctx, asked, events } = context(folder, { preApproved: ['tool'] });
+    const result = await runSetup([{ id: 'tool', title: 'The tool', check: fileExists('tool'), fix: touch('tool') }], ctx);
+
+    assert.deepStrictEqual(result, [{ id: 'tool', title: 'The tool', state: 'ready' }]);
+    assert.deepStrictEqual(asked, []);
+    assert.deepStrictEqual(events, ['begin tool', 'tool checking', 'tool fixing', 'tool checking', 'tool ready', 'end 1']);
+  });
+
+  test('any other fix asks first, showing the exact command', async () => {
+    const { ctx, asked } = context(folder, { answer: true });
+    const result = await runSetup([{ id: 'tool', check: fileExists('tool'), fix: touch('tool') }], ctx);
+
+    assert.strictEqual(result[0].state, 'ready');
+    assert.deepStrictEqual(asked, [process.platform === 'win32'
+      ? 'tool: New-Item -ItemType File -Force tool | Out-Null'
+      : 'tool: touch tool']);
+  });
+
+  test('a declined fix does not run, and what waits for it is skipped', async () => {
+    const { ctx } = context(folder, { answer: false });
+    const result = await runSetup([
+      { id: 'tool', check: fileExists('tool'), fix: touch('tool'), failMessage: 'Install the tool.' },
+      { id: 'after', check: 'exit 0', dependsOn: ['tool'] },
+    ], ctx);
+
+    assert.deepStrictEqual(states(result), { tool: 'failed', after: 'skipped' });
+    assert.ok(!exists('tool'));
+    assert.match(result[0].detail!, /^Its check failed, and you chose not to run the fix\.\nInstall the tool\./);
+    assert.strictEqual(result[1].detail, 'Waits for tool, which is not ready.');
+  });
+
+  test('a fix that needs another team waits for their approval, without asking', async () => {
+    const { ctx, asked } = context(folder, { answer: true });
+    const result = await runSetup([
+      { id: 'db', check: fileExists('db'), fix: touch('db'), needs: ['vpn', 'approval:dba'] },
+      { id: 'app', check: 'exit 0', dependsOn: ['db'] },
+    ], ctx);
+
+    assert.deepStrictEqual(states(result), { db: 'needs-approval', app: 'skipped' });
+    assert.deepStrictEqual(asked, []);
+    assert.ok(!exists('db'));
+    assert.match(result[0].detail!, /^Its fix needs approval from dba\.\nIt needs: vpn\./);
+  });
+
+  test('approval from the Org beats a need for another team', async () => {
+    const { ctx } = context(folder, { preApproved: ['db'] });
+    const result = await runSetup([{ id: 'db', check: fileExists('db'), fix: touch('db'), needs: ['approval:dba'] }], ctx);
+    assert.strictEqual(result[0].state, 'ready');
+  });
+
+  test('a failed check with no fix fails with the message and output', async () => {
+    const { ctx } = context(folder);
+    const result = await runSetup([{ id: 'vpn', check: fail('not-connected'), failMessage: 'Connect to the VPN.' }], ctx);
+    assert.strictEqual(result[0].state, 'failed');
+    assert.strictEqual(result[0].detail,
+      'Its check failed and it has no fix.\nConnect to the VPN.\nOutput:\nnot-connected');
+  });
+
+  test('a fix that fails, or that leaves the check failing, fails the entry', async () => {
+    const { ctx } = context(folder, { preApproved: ['broken-fix', 'useless-fix'] });
+    const result = await runSetup([
+      { id: 'broken-fix', check: fileExists('a'), fix: fail('fix-broke') },
+      { id: 'useless-fix', check: fileExists('b'), fix: touch('c') },
+    ], ctx);
+
+    assert.deepStrictEqual(states(result), { 'broken-fix': 'failed', 'useless-fix': 'failed' });
+    assert.match(result[0].detail!, /^Its fix failed\.\nOutput:\nfix-broke$/);
+    assert.match(result[1].detail!, /^Its fix ran, but its check still fails\./);
+  });
+
+  test('a failed prove fails the entry', async () => {
+    const { ctx } = context(folder);
+    const result = await runSetup([{ id: 'svc', check: 'exit 0', prove: fail('no-answer') }], ctx);
+    assert.strictEqual(result[0].state, 'failed');
+    assert.match(result[0].detail!, /^It is in place, but its test of whether it works failed\.\nOutput:\nno-answer$/);
+  });
+
+  test('an entry depending on an unknown id is skipped and says why', async () => {
+    const { ctx } = context(folder);
+    const result = await runSetup([{ id: 'app', check: 'exit 0', dependsOn: ['org-proxy'] }], ctx);
+    assert.strictEqual(result[0].state, 'skipped');
+    assert.strictEqual(result[0].detail, 'Depends on "org-proxy", which is not in the setup plan.');
+  });
+
+  test('runs entries in dependency order and reports them in that order', async () => {
+    const { ctx, events } = context(folder);
+    const result = await runSetup([
+      { id: 'gradle', check: 'exit 0', dependsOn: ['jdk'] },
+      { id: 'jdk', check: 'exit 0' },
+    ], ctx);
+    assert.deepStrictEqual(result.map(s => s.id), ['jdk', 'gradle']);
+    assert.strictEqual(events[0], 'begin jdk,gradle');
+  });
+
+  test('a preset problem fails that entry only', async () => {
+    const { ctx } = context(folder);
+    const result = await runSetup([
+      { id: 'jdk', uses: 'jdk' },
+      { id: 'other', check: 'exit 0' },
+    ], ctx);
+    assert.deepStrictEqual(states(result), { jdk: 'failed', other: 'ready' });
+    assert.match(result[0].detail!, /needs "with: \{ version/);
+  });
+
+  test('secrets are read once, passed to every command, and hidden in the output', async () => {
+    const { ctx, secretReads } = context(folder, { secrets: { 'dev/token': 'tok-12345' }, preApproved: ['svc'] });
+    const showToken: Command = { posix: 'echo "token is $TOKEN"; exit 1', windows: 'Write-Output "token is $env:TOKEN"; exit 1' };
+    const result = await runSetup([{
+      id: 'svc',
+      secrets: { TOKEN: 'dev/token' },
+      check: { posix: 'test "$TOKEN" = tok-12345', windows: 'if ($env:TOKEN -ne "tok-12345") { exit 1 }' },
+      prove: showToken,
+    }], ctx);
+
+    assert.deepStrictEqual(secretReads, [{ TOKEN: 'dev/token' }]);
+    assert.strictEqual(result[0].state, 'failed', 'the check saw the secret, then the prove failed on purpose');
+    assert.match(result[0].detail!, /token is \*\*\*$/);
+    assert.ok(!result[0].detail!.includes('tok-12345'));
+  });
+
+  test('a missing secret fails the entry before any command runs', async () => {
+    const { ctx } = context(folder);
+    const result = await runSetup([
+      { id: 'svc', secrets: { TOKEN: 'dev/none' }, check: touch('ran'), failMessage: 'Ask for access.' },
+    ], ctx);
+    assert.strictEqual(result[0].state, 'failed');
+    assert.strictEqual(result[0].detail, 'No value for TOKEN in the secret store.\nAsk for access.');
+    assert.ok(!exists('ran'));
+  });
+
+  test('Cancel stops the running command and skips the rest', async () => {
+    const { ctx, token } = context(folder);
+    setTimeout(() => (token.isCancellationRequested = true), 300);
+    const result = await runSetup([
+      { id: 'quick', check: 'exit 0' },
+      { id: 'slow', check: { posix: 'sleep 30', windows: 'Start-Sleep 30' } },
+      { id: 'later', check: 'exit 0' },
+    ], ctx);
+    assert.deepStrictEqual(states(result), { quick: 'ready', slow: 'skipped', later: 'skipped' });
+    assert.strictEqual(result[2].detail, 'Setup was cancelled.');
+  });
+});
