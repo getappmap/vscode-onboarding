@@ -5,7 +5,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { Command, Entry } from '../../manifest/manifest';
 import type { EntryStatus } from '../../report/report';
-import { SetupContext, inDependencyOrder, runSetup } from '../../setup/runSetup';
+import { SetupContext, definitionHash, inDependencyOrder, runSetup } from '../../setup/runSetup';
 
 // Commands that work in sh and in PowerShell.
 const fileExists = (name: string): Command => ({
@@ -23,6 +23,8 @@ function context(folder: string, options: {
   preApproved?: string[];
   secrets?: Record<string, string>;
   answer?: boolean;
+  proven?: Map<string, string>;
+  reprove?: boolean;
 } = {}) {
   const updates: EntryStatus[] = [];
   const asked: string[] = [];
@@ -57,6 +59,8 @@ function context(folder: string, options: {
       end: statuses => events.push(`end ${statuses.length}`),
     },
     token: token as unknown as vscode.CancellationToken,
+    proven: options.proven ?? new Map(),
+    reprove: options.reprove,
   };
   return { ctx, updates, asked, secretReads, events, token };
 }
@@ -254,5 +258,70 @@ suite('runSetup: running entries', function () {
     ], ctx);
     assert.deepStrictEqual(states(result), { quick: 'ready', slow: 'skipped', later: 'skipped' });
     assert.strictEqual(result[2].detail, 'Setup was cancelled.');
+  });
+});
+
+suite('runSetup: proving once', function () {
+  this.timeout(20_000);
+  let folder: string;
+  setup(() => {
+    folder = fs.mkdtempSync(path.join(os.tmpdir(), 'onboarding-proven-'));
+  });
+  teardown(() => fs.rmSync(folder, { recursive: true, force: true }));
+  const exists = (name: string) => fs.existsSync(path.join(folder, name));
+
+  const entry: Entry = { id: 'tool', check: touch('checked'), prove: touch('proved'), secrets: { T: 'dev/t' } };
+
+  test('a proven entry is remembered by its definition', async () => {
+    const proven = new Map<string, string>();
+    const { ctx } = context(folder, { proven, secrets: { 'dev/t': 'x' } });
+    await runSetup([entry], ctx);
+    assert.deepStrictEqual([...proven], [['tool', definitionHash(entry)]]);
+  });
+
+  test('an entry proven earlier is ready without running anything or reading secrets', async () => {
+    const proven = new Map([['tool', definitionHash(entry)]]);
+    const { ctx, events, secretReads } = context(folder, { proven });
+    const result = await runSetup([entry], ctx);
+
+    assert.deepStrictEqual(result, [{ id: 'tool', title: 'tool', state: 'ready', detail: 'Proven earlier.' }]);
+    assert.deepStrictEqual(events, ['begin tool', 'tool ready', 'end 1']);
+    assert.deepStrictEqual(secretReads, []);
+    assert.ok(!exists('checked') && !exists('proved'));
+  });
+
+  test('an entry whose commands changed runs again', async () => {
+    const proven = new Map([['tool', definitionHash(entry)]]);
+    const { ctx } = context(folder, { proven, secrets: { 'dev/t': 'x' } });
+    await runSetup([{ ...entry, prove: touch('proved-again') }], ctx);
+    assert.ok(exists('checked') && exists('proved-again'));
+  });
+
+  test('editing only the title or messages does not', () => {
+    assert.strictEqual(definitionHash({ ...entry, title: 'New title', failMessage: 'New message', troubleshooting: 'Tip' }),
+      definitionHash(entry));
+    assert.notStrictEqual(definitionHash({ ...entry, env: { A: '1' } }), definitionHash(entry));
+  });
+
+  test('a preset entry is remembered by the commands the preset fills in', () => {
+    const jdk21: Entry = { id: 'jdk', uses: 'jdk', with: { version: '21' } };
+    assert.notStrictEqual(definitionHash(jdk21), definitionHash({ ...jdk21, with: { version: '17' } }));
+  });
+
+  test('asking to prove again runs every entry', async () => {
+    const proven = new Map([['tool', definitionHash(entry)]]);
+    const { ctx } = context(folder, { proven, reprove: true, secrets: { 'dev/t': 'x' } });
+    const result = await runSetup([entry], ctx);
+    assert.strictEqual(result[0].state, 'ready');
+    assert.strictEqual(result[0].detail, undefined);
+    assert.ok(exists('proved'));
+  });
+
+  test('an entry that fails when proved again is forgotten', async () => {
+    const failing: Entry = { id: 'tool', check: 'exit 0', prove: fail('broken-now') };
+    const proven = new Map([['tool', definitionHash(failing)]]);
+    const { ctx } = context(folder, { proven, reprove: true });
+    await runSetup([failing], ctx);
+    assert.strictEqual(proven.has('tool'), false);
   });
 });

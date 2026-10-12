@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import type * as vscode from 'vscode';
 import type { Command, Entry } from '../manifest/manifest';
 import type { EntryState, EntryStatus, SetupReporter } from '../report/report';
@@ -12,9 +13,40 @@ export interface SetupContext {
   askToFix(entry: Entry, command: string): Promise<boolean>;
   reporter: SetupReporter;
   token: vscode.CancellationToken;
+  /**
+   * Entry id -> definitionHash of the entries proven on this computer. An entry found here
+   * with the same hash is ready without running anything. Updated as entries finish.
+   */
+  proven: Map<string, string>;
+  /** Run every entry again, even those proven earlier. */
+  reprove?: boolean;
 }
 
 const APPROVAL_PREFIX = 'approval:';
+
+/**
+ * A short code for the parts of an entry that decide what runs: its commands (after the
+ * preset fills them in), env, secret paths and preset values. Editing these means the
+ * entry must be proven again; editing its title or messages does not.
+ */
+export function definitionHash(entry: Entry): string {
+  const { check, fix, prove, env, secrets, uses } = entry;
+  const json = stableJson({ check, fix, prove, env, secrets, uses, with: entry.with });
+  return createHash('sha256').update(json).digest('hex').slice(0, 16);
+}
+
+/** JSON with keys sorted, so the same definition always gives the same text. */
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map(stableJson).join(',')}]`;
+  }
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort()
+      .filter(k => (value as Record<string, unknown>)[k] !== undefined)
+      .map(k => `${JSON.stringify(k)}:${stableJson((value as Record<string, unknown>)[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(value);
+}
 
 /**
  * Orders entries so each comes after the ones it depends on, keeping the written order
@@ -54,7 +86,8 @@ export function inDependencyOrder(entries: Entry[]): Entry[] {
 /**
  * Takes every entry through the same steps and reports each change:
  *   check -> (fix, only if pre-approved or the developer agrees) -> check again -> prove.
- * Entries that depend on a failed entry are skipped.
+ * An entry proven earlier with the same definition is ready without running anything,
+ * unless ctx.reprove is set. Entries that depend on one that is not ready are skipped.
  */
 export async function runSetup(entries: Entry[], ctx: SetupContext): Promise<EntryStatus[]> {
   const ordered = inDependencyOrder(entries);
@@ -62,6 +95,9 @@ export async function runSetup(entries: Entry[], ctx: SetupContext): Promise<Ent
   const report = (entry: Entry, state: EntryState, detail?: string): EntryStatus => {
     const status: EntryStatus = { id: entry.id, title: entry.title ?? entry.id, state, ...(detail ? { detail } : {}) };
     statuses.set(entry.id, status);
+    if (state === 'failed' || state === 'needs-approval') {
+      ctx.proven.delete(entry.id);
+    }
     ctx.reporter.update(status);
     return status;
   };
@@ -94,6 +130,12 @@ async function setUpOne(written: Entry, ctx: SetupContext, report: Report): Prom
     entry = expandPreset(written);
   } catch (err) {
     report(written, 'failed', (err as Error).message);
+    return;
+  }
+
+  const hash = definitionHash(entry);
+  if (!ctx.reprove && ctx.proven.get(entry.id) === hash) {
+    report(entry, 'ready', 'Proven earlier.');
     return;
   }
 
@@ -184,6 +226,7 @@ async function setUpOne(written: Entry, ctx: SetupContext, report: Report): Prom
       return;
     }
   }
+  ctx.proven.set(entry.id, hash);
   report(entry, 'ready');
 }
 
