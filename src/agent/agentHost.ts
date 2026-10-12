@@ -9,12 +9,18 @@ export interface AgentHost {
 
 export class CopilotAgentHost implements AgentHost {
   async isAvailable(): Promise<boolean> {
-    throw new Error("TODO: vscode.lm.selectChatModels({ vendor: 'copilot' }) returns at least one");
+    return (await vscode.lm.selectChatModels({ vendor: 'copilot' })).length > 0;
   }
 
   async openChat(prompt: string): Promise<void> {
-    // TODO: 'workbench.action.chat.open' with { query: prompt, isPartialQuery: true, mode: 'agent' }.
-    // Built-in command; its arguments are not a stable API, so re-check after VS Code updates.
+    try {
+      // Built-in command; its arguments are not a stable API, so re-check after VS Code updates.
+      // isPartialQuery puts the prompt in the input box without sending it.
+      await vscode.commands.executeCommand('workbench.action.chat.open', { query: prompt, isPartialQuery: true, mode: 'agent' });
+    } catch (err) {
+      void vscode.window.showErrorMessage(
+        `Could not open Copilot Chat. Is the GitHub Copilot Chat extension installed? ${(err as Error).message}`);
+    }
   }
 }
 

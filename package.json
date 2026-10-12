@@ -41,6 +41,12 @@
         "icon": "$(copilot)"
       },
       {
+        "command": "onboarding.askCopilotAboutEntry",
+        "title": "Ask Copilot to Help",
+        "category": "Onboarding",
+        "icon": "$(copilot)"
+      },
+      {
         "command": "onboarding.draftManifest",
         "title": "Draft Manifest",
         "category": "Onboarding"
@@ -85,6 +91,19 @@
           "command": "onboarding.reproveSetup",
           "when": "view == onboarding.report",
           "group": "more@1"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "onboarding.askCopilotAboutEntry",
+          "when": "view == onboarding.report && viewItem =~ /^(failed|skipped|needs-approval)$/",
+          "group": "inline"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "onboarding.askCopilotAboutEntry",
+          "when": "false"
         }
       ]
     },

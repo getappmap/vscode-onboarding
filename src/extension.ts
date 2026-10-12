@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { getAgentHost } from './agent/agentHost';
+import { troubleshootPrompt } from './agent/prompts';
 import { Entry, MANIFEST_FILE, Manifest, combineLayers, readManifest } from './manifest/manifest';
 import { ManifestMcpProvider, PROVIDER_ID } from './connections/mcpServers';
 import { EntryStatus, SetupReport, rowsBeforeRun } from './report/report';
@@ -124,6 +125,15 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   };
 
+  const askCopilot = async (statuses: EntryStatus[]) => {
+    if (statuses.length === 0) {
+      void vscode.window.showInformationMessage('Every setup entry is ready.');
+      return;
+    }
+    const items = statuses.map(status => ({ status, entry: plan.entries.find(e => e.id === status.id) }));
+    await getAgentHost().openChat(troubleshootPrompt(items));
+  };
+
   context.subscriptions.push(
     log,
     vscode.window.registerTreeDataProvider('onboarding.report', report),
@@ -131,9 +141,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.lm.registerTool(CheckEntriesTool.NAME, new CheckEntriesTool(() => plan.entries)),
     vscode.commands.registerCommand('onboarding.runSetup', () => runProjectSetup(false)),
     vscode.commands.registerCommand('onboarding.reproveSetup', () => runProjectSetup(true)),
-    vscode.commands.registerCommand('onboarding.askCopilot', async () => {
-      // TODO: getAgentHost().openChat('/troubleshooter ' + the rows in report.notReady())
-    }),
+    vscode.commands.registerCommand('onboarding.askCopilot', () => askCopilot(report.notReady())),
+    // The button on a row passes that row.
+    vscode.commands.registerCommand('onboarding.askCopilotAboutEntry', (status: EntryStatus) => askCopilot([status])),
     vscode.commands.registerCommand('onboarding.draftManifest', () =>
       getAgentHost().openChat('/manifest-writer Draft onboarding.yaml for this repository.')),
   );

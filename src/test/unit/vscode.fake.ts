@@ -58,11 +58,19 @@ export const workspace = {
 export const fake = {
   messages: [] as { kind: 'info' | 'warning' | 'error'; message: string; items: string[] }[],
   executed: [] as string[],
+  /** Arguments of each executed command, in the same order as `executed`. */
+  executedArgs: [] as unknown[][],
+  /** Commands that throw when executed, as a missing extension's would. */
+  failing: new Set<string>(),
   answer: undefined as string | undefined,
+  chatModels: [] as unknown[],
   reset(): void {
     this.messages = [];
     this.executed = [];
+    this.executedArgs = [];
+    this.failing = new Set();
     this.answer = undefined;
+    this.chatModels = [];
   },
 };
 
@@ -81,9 +89,19 @@ export const window = {
 };
 
 export const commands = {
-  async executeCommand(command: string): Promise<unknown> {
+  async executeCommand(command: string, ...args: unknown[]): Promise<unknown> {
     fake.executed.push(command);
+    fake.executedArgs.push(args);
+    if (fake.failing.has(command)) {
+      throw new Error(`command '${command}' not found`);
+    }
     return undefined;
+  },
+};
+
+export const lm = {
+  async selectChatModels(_selector?: { vendor?: string }): Promise<unknown[]> {
+    return fake.chatModels;
   },
 };
 
