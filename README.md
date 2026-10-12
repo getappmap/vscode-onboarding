@@ -7,10 +7,8 @@ check that something is in place, put it in place, and prove it works. The exten
 every entry the same way, shows progress and a Project Setup list, and uses GitHub Copilot
 agent mode to help when something fails.
 
-Design documents:
-
-- [Onboarding Extension Build Recipe](https://claude.ai/code/artifact/74fe1420-4a60-43fe-9971-89539b11acee): the files, stubs and steps this code follows
-- [Onboarding Manifest Reference](https://claude.ai/code/artifact/e748a02a-73f5-416c-b748-f50e3e1830f7): the manifest format and how setup works
+Design: the [Onboarding Manifest Reference](https://claude.ai/code/artifact/e748a02a-73f5-416c-b748-f50e3e1830f7)
+describes the manifest format and how setup works.
 
 ## Developer setup
 
@@ -20,7 +18,7 @@ You need:
 |---|---|
 | Node.js | 24 (in `.nvmrc`; run `nvm use`). VS Code runs extensions on Node 24 too |
 | VS Code | 1.134 or later |
-| GitHub Copilot | Copilot Chat extension, for phases 6 and 7 |
+| GitHub Copilot | Copilot Chat extension, only to try the AI features (Ask Copilot, Draft Manifest) |
 
 Install the packages:
 
