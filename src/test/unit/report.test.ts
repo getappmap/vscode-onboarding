@@ -12,28 +12,31 @@ const gradle: Entry = { id: 'gradle', check: 'gradle -v', dependsOn: ['jdk'] };
 const settle = () => new Promise(resolve => setImmediate(resolve));
 
 suite('Report: rows from the status file', () => {
-  test('each entry shows its last result; one never run waits', () => {
+  test('each entry shows its last result; one never run is not checked yet', () => {
     const rows = rowsBeforeRun([gradle, jdk, { id: 'new', check: 'x' }], {
-      jdk: { title: 'Java 21', state: 'ready', detail: 'Proven earlier.', because: 'proven-earlier', proven: definitionHash(jdk) },
+      jdk: {
+        title: 'Java 21', state: 'ready', detail: 'Proven earlier.', because: 'proven-earlier',
+        proven: definitionHash(jdk), proven_at: '2026-10-12T09:00:00.000Z',
+      },
       gradle: { title: 'gradle', state: 'failed', detail: 'Its check failed.' },
     });
 
     assert.deepStrictEqual(rows, [
-      { id: 'jdk', title: 'Java 21', state: 'ready', detail: 'Proven earlier.', because: 'proven-earlier' },
+      { id: 'jdk', title: 'Java 21', state: 'ready', detail: 'Proven earlier.', because: 'proven-earlier', provenAt: '2026-10-12T09:00:00.000Z' },
       { id: 'gradle', title: 'gradle', state: 'failed', detail: 'Its check failed.' },
-      { id: 'new', title: 'new', state: 'waiting' },
+      { id: 'new', title: 'new', state: 'unchecked' },
     ]);
   });
 
-  test('an entry whose definition changed since it was proven waits', () => {
+  test('an entry whose definition changed since it was proven is not checked yet', () => {
     const rows = rowsBeforeRun([{ ...jdk, check: 'java --version' }],
       { jdk: { title: 'Java 21', state: 'ready', proven: definitionHash(jdk) } });
-    assert.strictEqual(rows[0].state, 'waiting');
+    assert.strictEqual(rows[0].state, 'unchecked');
   });
 
   test('a run that was cut off part way is not shown as running', () => {
     const rows = rowsBeforeRun([jdk], { jdk: { title: 'Java 21', state: 'checking' } });
-    assert.strictEqual(rows[0].state, 'waiting');
+    assert.strictEqual(rows[0].state, 'unchecked');
   });
 
   test('the title comes from the manifest, not the file', () => {
@@ -108,6 +111,16 @@ suite('Report: during and after a run', () => {
     assert.deepStrictEqual(report.notReady().map(s => s.id), ['gradle']);
   });
 
+  test('Ask Copilot covers problems, not entries never checked', () => {
+    report.show([
+      { id: 'a', title: 'a', state: 'unchecked' },
+      { id: 'b', title: 'b', state: 'failed' },
+      { id: 'c', title: 'c', state: 'needs-approval' },
+      { id: 'd', title: 'd', state: 'ready' },
+    ]);
+    assert.deepStrictEqual(report.notReady().map(s => s.id), ['b', 'c']);
+  });
+
   test('closing the warning does nothing more', async () => {
     report.end([{ id: 'jdk', title: 'Java 21', state: 'failed' }]);
     await settle();
@@ -136,9 +149,12 @@ suite('Report: rows in the list', () => {
       '**Java 21**: Failed\n\n\n```text\nIts check failed.\nOutput:\nno java\n```\n');
   });
 
-  test('a row proven earlier says so', () => {
-    const item = report.getTreeItem({ id: 'jdk', title: 'Java 21', state: 'ready', detail: 'Proven earlier.', because: 'proven-earlier' });
-    assert.strictEqual(item.description, 'Ready, proven earlier');
+  test('a ready row just says Ready; when it was proven is in the hover', () => {
+    const item = report.getTreeItem({
+      id: 'jdk', title: 'Java 21', state: 'ready', because: 'proven-earlier', provenAt: '2026-10-12T09:00:00.000Z',
+    });
+    assert.strictEqual(item.description, 'Ready');
+    assert.match((item.tooltip as vscode.MarkdownString).value, /^\*\*Java 21\*\*: Ready\. Proven .*2026.*\.$/);
     assert.deepStrictEqual(item.iconPath, new vscode.ThemeIcon('pass', new vscode.ThemeColor('testing.iconPassed')));
   });
 
@@ -147,6 +163,11 @@ suite('Report: rows in the list', () => {
     assert.strictEqual(missing.description, 'Skipped, dependency missing');
     const cancelled = report.getTreeItem({ id: 'gradle', title: 'gradle', state: 'skipped', because: 'cancelled' });
     assert.strictEqual(cancelled.description, 'Skipped, cancelled');
+  });
+
+  test('a row setup has not reached says so', () => {
+    assert.strictEqual(report.getTreeItem({ id: 'jdk', title: 'Java 21', state: 'unchecked' }).description, 'Not checked yet');
+    assert.strictEqual(report.getTreeItem({ id: 'jdk', title: 'Java 21', state: 'waiting' }).description, 'Waiting');
   });
 
   test('a running row spins', () => {

@@ -5,7 +5,9 @@ import { definitionHash, inDependencyOrder } from '../setup/runSetup';
 import type { EntryRecord } from './statusFile';
 
 export type EntryState =
-  | 'waiting' | 'checking' | 'fixing' | 'proving'
+  | 'unchecked'   // setup has not reached it yet
+  | 'waiting'     // queued in the run going now
+  | 'checking' | 'fixing' | 'proving'
   | 'ready' | 'failed' | 'skipped' | 'needs-approval';
 
 /** Why an entry ended as it did, when the state alone does not say. */
@@ -17,6 +19,7 @@ export interface EntryStatus {
   state: EntryState;
   detail?: string;     // plain words; the last lines of output when it failed
   because?: Because;
+  provenAt?: string;   // when it was last proven on this computer (ISO time)
 }
 
 /** What setup tells the developer while it runs. The runner knows nothing else about the UI. */
@@ -29,6 +32,7 @@ export interface SetupReporter {
 export const ASK_COPILOT = 'Ask Copilot to Help';
 
 const STATE_TEXT: Record<EntryState, string> = {
+  'unchecked': 'Not checked yet',
   'waiting': 'Waiting',
   'checking': 'Checking',
   'fixing': 'Fixing',
@@ -40,7 +44,8 @@ const STATE_TEXT: Record<EntryState, string> = {
 };
 
 const STATE_ICON: Record<EntryState, [icon: string, color?: string]> = {
-  'waiting': ['circle-outline'],
+  'unchecked': ['circle-outline'],
+  'waiting': ['clock'],
   'checking': ['sync~spin'],
   'fixing': ['sync~spin'],
   'proving': ['sync~spin'],
@@ -50,11 +55,13 @@ const STATE_ICON: Record<EntryState, [icon: string, color?: string]> = {
   'needs-approval': ['shield', 'list.warningForeground'],
 };
 
-const BECAUSE_TEXT: Record<Because, string> = {
-  'proven-earlier': 'proven earlier',
+/** Added to the state on a row. "Proven earlier" is left out: ready is ready. */
+const BECAUSE_TEXT: Partial<Record<Because, string>> = {
   'dependency-missing': 'dependency missing',
   'cancelled': 'cancelled',
 };
+
+const PROBLEMS: EntryState[] = ['failed', 'skipped', 'needs-approval'];
 
 const RUNNING: EntryState[] = ['checking', 'fixing', 'proving'];
 
@@ -73,15 +80,16 @@ export function rowsBeforeRun(entries: Entry[], records: Record<string, EntryRec
   return ordered.map(entry => {
     const title = entry.title ?? entry.id;
     const record = records[entry.id];
-    const usable = record && !RUNNING.includes(record.state) && record.state !== 'waiting'
-      && (record.state !== 'ready' || record.proven === currentHash(entry));
+    const usable = record && PROBLEMS.includes(record.state)
+      || record?.state === 'ready' && record.proven === currentHash(entry);
     return usable
       ? {
         id: entry.id, title, state: record.state,
         ...(record.detail ? { detail: record.detail } : {}),
         ...(record.because ? { because: record.because } : {}),
+        ...(record.proven_at ? { provenAt: record.proven_at } : {}),
       }
-      : { id: entry.id, title, state: 'waiting' };
+      : { id: entry.id, title, state: 'unchecked' };
   });
 }
 
@@ -124,9 +132,9 @@ export class SetupReport implements SetupReporter, vscode.TreeDataProvider<Entry
     this.progress = progress;
   }
 
-  /** Rows that are not ready, for asking Copilot about them. */
+  /** Rows that failed, were skipped or need approval, for asking Copilot about them. */
   notReady(): EntryStatus[] {
-    return this.statuses.filter(s => s.state !== 'ready');
+    return this.statuses.filter(s => PROBLEMS.includes(s.state));
   }
 
   begin(entries: Entry[]): void {
@@ -165,13 +173,17 @@ export class SetupReport implements SetupReporter, vscode.TreeDataProvider<Entry
   getTreeItem(status: EntryStatus): vscode.TreeItem {
     const item = new vscode.TreeItem(status.title, vscode.TreeItemCollapsibleState.None);
     item.id = status.id;
-    item.description = status.because ? `${STATE_TEXT[status.state]}, ${BECAUSE_TEXT[status.because]}` : STATE_TEXT[status.state];
+    const because = status.because && BECAUSE_TEXT[status.because];
+    item.description = because ? `${STATE_TEXT[status.state]}, ${because}` : STATE_TEXT[status.state];
     const [icon, color] = STATE_ICON[status.state];
     item.iconPath = new vscode.ThemeIcon(icon, color ? new vscode.ThemeColor(color) : undefined);
     item.contextValue = status.state;
 
     const tooltip = new vscode.MarkdownString();
     tooltip.appendMarkdown(`**${status.title}**: ${STATE_TEXT[status.state]}`);
+    if (status.state === 'ready' && status.provenAt) {
+      tooltip.appendMarkdown(`. Proven ${new Date(status.provenAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}.`);
+    }
     if (status.detail) {
       tooltip.appendMarkdown('\n\n');
       tooltip.appendCodeblock(status.detail, 'text');

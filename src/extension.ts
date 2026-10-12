@@ -14,6 +14,10 @@ const RUN_FIX = 'Run Fix';
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   const folder = vscode.workspace.workspaceFolders?.[0];
   const log = vscode.window.createOutputChannel('Onboarding', { log: true });
+  // Chooses the message the empty view shows; see viewsWelcome in package.json.
+  const setViewState = (state: 'loading' | 'no-folder' | 'invalid' | 'empty' | 'ready') =>
+    vscode.commands.executeCommand('setContext', 'onboarding.viewState', state);
+  await setViewState(folder ? 'loading' : 'no-folder');
   let plan: Manifest = { entries: [], mcpServers: [] };
   let preApproved = new Set<string>();
   let running = false;
@@ -33,9 +37,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return;
     }
     let project: Manifest | undefined;
+    let invalid = false;
     try {
       project = await readManifest(folder.uri);
     } catch (err) {
+      invalid = true;
       log.error((err as Error).message);
       void vscode.window.showErrorMessage(`${MANIFEST_FILE} cannot be used. ${firstLine(err)}`, 'Show Details')
         .then(choice => choice && log.show());
@@ -54,6 +60,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     plan = combineLayers(project ? [...layers, project] : layers);
     mcp.update(plan.mcpServers);
     await showLastResults();
+    await setViewState(invalid ? 'invalid' : plan.entries.length === 0 ? 'empty' : 'ready');
     // TODO: warn about guessed values whose README text changed (findStale, notifyStale).
   };
 
@@ -125,6 +132,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     } finally {
       await recorder.saved();
       running = false;
+      await showLastResults();
     }
   };
 
@@ -147,6 +155,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('onboarding.askCopilot', () => askCopilot(report.notReady())),
     // The button on a row passes that row.
     vscode.commands.registerCommand('onboarding.askCopilotAboutEntry', (status: EntryStatus) => askCopilot([status])),
+    vscode.commands.registerCommand('onboarding.showLog', () => log.show()),
     vscode.commands.registerCommand('onboarding.draftManifest', () =>
       getAgentHost().openChat('/manifest-writer Draft onboarding.yaml for this repository.')),
   );

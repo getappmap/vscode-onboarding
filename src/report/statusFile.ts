@@ -20,6 +20,7 @@ export interface EntryRecord {
   because?: Because;
   last_ran?: string;   // when this entry last finished
   proven?: string;     // definitionHash of the entry when it was proven on this computer
+  proven_at?: string;  // when it was proven
 }
 
 export interface Status {
@@ -103,7 +104,8 @@ export class StatusRecorder implements SetupReporter {
   }
 
   update(status: EntryStatus): void {
-    const finished = !['waiting', 'checking', 'fixing', 'proving'].includes(status.state);
+    const finished = !['unchecked', 'waiting', 'checking', 'fixing', 'proving'].includes(status.state);
+    const now = finished ? this.now().toISOString() : undefined;
     const previous = this.status.entries[status.id];
     const record: EntryRecord = { title: status.title, state: status.state };
     if (status.detail) {
@@ -112,13 +114,18 @@ export class StatusRecorder implements SetupReporter {
     if (status.because) {
       record.because = status.because;
     }
-    const lastRan = finished ? this.now().toISOString() : previous?.last_ran;
+    const lastRan = now ?? previous?.last_ran;
     if (lastRan) {
       record.last_ran = lastRan;
     }
     const proven = this.proven.get(status.id);
     if (proven) {
       record.proven = proven;
+      const provenNow = status.state === 'ready' && status.because !== 'proven-earlier';
+      const provenAt = provenNow ? now : previous?.proven_at;
+      if (provenAt) {
+        record.proven_at = provenAt;
+      }
     }
     this.status.entries[status.id] = record;
     this.save();

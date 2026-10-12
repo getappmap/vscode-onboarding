@@ -50,6 +50,11 @@
         "command": "onboarding.draftManifest",
         "title": "Draft Manifest",
         "category": "Onboarding"
+      },
+      {
+        "command": "onboarding.showLog",
+        "title": "Show Log",
+        "category": "Onboarding"
       }
     ],
     "viewsContainers": {
@@ -72,6 +77,22 @@
     "viewsWelcome": [
       {
         "view": "onboarding.report",
+        "when": "onboarding.viewState == loading || !onboarding.viewState",
+        "contents": "Reading onboarding.yaml\u2026"
+      },
+      {
+        "view": "onboarding.report",
+        "when": "onboarding.viewState == no-folder",
+        "contents": "Open a folder to set it up."
+      },
+      {
+        "view": "onboarding.report",
+        "when": "onboarding.viewState == invalid",
+        "contents": "onboarding.yaml has problems, so there is nothing to show.\n[Show Problems](command:onboarding.showLog)"
+      },
+      {
+        "view": "onboarding.report",
+        "when": "onboarding.viewState == empty",
         "contents": "This folder has nothing to set up yet: there is no onboarding.yaml, or it has no entries.\n[Draft Manifest](command:onboarding.draftManifest)"
       }
     ],

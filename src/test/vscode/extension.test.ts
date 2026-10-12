@@ -10,7 +10,7 @@ suite('Extension', () => {
     const commands = await vscode.commands.getCommands(true);
     for (const id of [
       'onboarding.runSetup', 'onboarding.reproveSetup', 'onboarding.askCopilot', 'onboarding.askCopilotAboutEntry',
-      'onboarding.draftManifest',
+      'onboarding.showLog', 'onboarding.draftManifest',
     ]) {
       assert.ok(commands.includes(id), `${id} is not registered`);
     }

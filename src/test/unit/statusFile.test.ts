@@ -83,7 +83,10 @@ suite('Status file: recording a run', () => {
     assert.strictEqual(status.run_started, '2026-10-12T09:00:00.000Z');
     assert.strictEqual(status.run_finished, '2026-10-12T09:03:00.000Z');
     assert.deepStrictEqual(status.entries, {
-      jdk: { title: 'Java 21', state: 'ready', last_ran: '2026-10-12T09:01:00.000Z', proven: 'hash-1' },
+      jdk: {
+        title: 'Java 21', state: 'ready', last_ran: '2026-10-12T09:01:00.000Z',
+        proven: 'hash-1', proven_at: '2026-10-12T09:01:00.000Z',
+      },
       vpn: { title: 'vpn', state: 'skipped', detail: 'Waits for proxy.', because: 'dependency-missing', last_ran: '2026-10-12T09:02:00.000Z' },
     });
     assert.strictEqual(status.platform, process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : 'linux');
