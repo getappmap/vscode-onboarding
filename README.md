@@ -47,8 +47,8 @@ with esbuild.
 2. Press F5. This builds and opens a second VS Code window with the extension loaded.
 3. In that window, open a folder that has an `onboarding.yaml`, such as
    `test-fixtures/sample-project`.
-4. Run **Onboarding: Run Project Setup** from the Command Palette, or use the play button on
-   the **Project Setup** list in the Explorer.
+4. Open **Project Setup** from its icon in the Activity Bar (a clipboard with ticks), then
+   press its play button. Or run **Onboarding: Run Project Setup** from the Command Palette.
 
 Setup remembers each entry it has proven on this computer and does not run it again until
 its commands change. To run everything again, use **Onboarding: Run Project Setup, Proving

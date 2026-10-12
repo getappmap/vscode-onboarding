@@ -46,14 +46,29 @@
         "category": "Onboarding"
       }
     ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "onboarding",
+          "title": "Project Setup",
+          "icon": "media/project-setup.svg"
+        }
+      ]
+    },
     "views": {
-      "explorer": [
+      "onboarding": [
         {
           "id": "onboarding.report",
           "name": "Project Setup"
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "onboarding.report",
+        "contents": "This folder has nothing to set up yet: there is no onboarding.yaml, or it has no entries.\n[Draft Manifest](command:onboarding.draftManifest)"
+      }
+    ],
     "menus": {
       "view/title": [
         {
