@@ -48,6 +48,9 @@ export class FileSystemError extends Error {
 }
 
 export const workspace = {
+  get isTrusted(): boolean {
+    return fake.trusted;
+  },
   getConfiguration(section?: string) {
     return {
       get<T>(key: string, defaultValue?: T): T | undefined {
@@ -83,8 +86,10 @@ export const fake = {
   chatModels: [] as unknown[],
   /** Settings by full name, such as 'onboarding.secretCommand'. */
   settings: {} as Record<string, unknown>,
+  trusted: true,
   reset(): void {
     this.settings = {};
+    this.trusted = true;
     this.messages = [];
     this.executed = [];
     this.executedArgs = [];
@@ -184,4 +189,12 @@ export class McpStdioServerDefinition {
     readonly label: string, public command: string, public args: string[] = [],
     public env: Record<string, string | number | null> = {}, public version?: string,
   ) {}
+}
+
+export class LanguageModelTextPart {
+  constructor(public value: string) {}
+}
+
+export class LanguageModelToolResult {
+  constructor(public content: unknown[]) {}
 }

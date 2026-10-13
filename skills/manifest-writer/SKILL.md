@@ -2,20 +2,61 @@
 name: manifest-writer
 description: Draft or extend onboarding.yaml by reading the repository. Use when a repository has no onboarding.yaml, or when asked to add or change a setup entry.
 ---
-TODO: steps for reading the repository and writing entries. Rules: check commands change
-nothing; don't repeat facts other files hold; name secrets by secret store path; give
-windows and posix forms when they differ; put `from:` on every guessed value.
+`onboarding.yaml` lists what a developer's computer needs to work on this repository. The
+Onboarding extension runs each entry the same way: check whether it is in place, fix it if not,
+check again, then prove it works. You write and change that file; you never run fixes.
 
-TODO, still to build for this skill (found by trying it on AppLand):
-- An extension tool that returns a README section's SHA, using the same code as the stale
-  check (src/manifest/sectionSha.ts). This skill must tell the agent to use it for every
-  `sha256:` in `from:`, and never compute one itself.
-- The check tool (onboarding_check_entries) works, so the agent can see which entries pass
-  after an edit.
-- Steps that cover a change spread beyond the manifest, such as moving from Docker to
-  Podman: also update the project files that run the old tool (AppLand's `rake dev:db`
-  calls docker-compose) and the README, or ask the person about them.
-- This skill is only there when the extension is installed; the README should say so.
+## The format
+
+```yaml
+team: payments                      # optional: picks the Team layer from the company server
+entries:
+  - id: jdk                         # lowercase, unique; other entries refer to it
+    title: Java 21                  # what the developer sees
+    uses: jdk                       # optional preset: jdk, gradle-wrapper, http-service
+    with: { version: "21" }         # values for the preset
+    check: <command>                # passes when it is in place; must change nothing
+    fix: <command>                  # puts it in place; runs without asking
+    prove: <command>                # passes when it works, such as a build or a request
+    dependsOn: [other-id]           # run after these; skipped if they are not ready
+    needs: [vpn, "approval:dba"]    # from outside; approval:<team> makes the fix wait
+    env: { NAME: value }            # plain values for the commands
+    secrets: { NAME: dev/path }     # secret store paths, never values
+    failMessage: <one specific next step>
+    troubleshooting: <notes for the troubleshooter>
+    from: { source: guessed, file: README.md, section: "## Run locally", sha256: <8 hex>, date: <YYYY-MM-DD> }
+mcpServers:
+  - { name: access, url: "https://...", tokenSecret: dev/path }   # or command: [program, args]
+```
+
+A command is one string, run with `sh -c` on macOS and Linux and PowerShell on Windows. When the
+two differ, write `{ posix: ..., windows: ... }`. If the project supports only macOS and Linux,
+give only `posix` forms and say so in a comment at the top of the file.
+
+## Steps
+
+1. **Read how the project is set up today.** The README's setup sections, CONTRIBUTING, `docs/`,
+   setup scripts such as `bin/setup`, version files (`.ruby-version`, `.nvmrc`, package.json
+   "engines" and "volta", `.tool-versions`), package files (Gemfile, package.json, go.mod,
+   build.gradle), `docker-compose.yml`, `.devcontainer/`, the CI workflows and `.env.example`.
+2. **List what a developer needs**, in the order they need it: tools and their versions,
+   packages, services such as a database, access and secrets, and a first build or test run.
+3. **Write one entry for each.** Follow the rules below. Read facts from the project's own
+   files in the commands, rather than copying them: for example compare `ruby -v` with
+   `.ruby-version`. A fix runs without asking, so it must change only what its entry needs, and
+   be safe to run twice.
+4. **Record where each value came from.** For a value taken from a README section, call the
+   `onboarding_section_sha` tool (#sectionSha) with the file and the heading, and copy the SHA
+   it returns into `from:`. Never compute a SHA yourself: it must match the extension's
+   README check exactly.
+5. **Change the rest of the project to match.** When a change reaches beyond the manifest, such
+   as moving from Docker to Podman, also update the project files that use the old tool (a rake
+   task, a script, a compose file) and the README, or ask the person whether to. A manifest that
+   disagrees with the project's own files is worse than none.
+6. **Check your work.** Call the `onboarding_check_entries` tool (#checkSetup) to see which
+   entries already pass on this computer. Explain any that fail. Do not run fixes yourself.
+7. **Show the person what you wrote**, including any change to their README or other files,
+   and what you were unsure of.
 
 ## Say exactly how each entry is satisfied
 

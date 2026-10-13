@@ -30,4 +30,11 @@ suite('Extension', () => {
       assert.ok(commands.includes(id), `${id} is missing`);
     }
   });
+
+  test('Copilot sees both onboarding tools', () => {
+    const names = vscode.lm.tools.map(t => t.name);
+    for (const name of ['onboarding_check_entries', 'onboarding_section_sha']) {
+      assert.ok(names.includes(name), `${name} is not registered`);
+    }
+  });
 });

@@ -171,6 +171,30 @@
             }
           }
         }
+      },
+      {
+        "name": "onboarding_section_sha",
+        "toolReferenceName": "sectionSha",
+        "displayName": "README Section SHA",
+        "modelDescription": "Returns the SHA of one section of a Markdown file in the project, computed exactly as the onboarding extension's README check computes it. Use it for every sha256 in a from: field of onboarding.yaml; never compute a SHA yourself. Give the file relative to the project folder and the heading exactly as written, with its # marks. Reads only; changes nothing.",
+        "canBeReferencedInPrompt": true,
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "file",
+            "heading"
+          ],
+          "properties": {
+            "file": {
+              "type": "string",
+              "description": "Path relative to the project folder, such as README.md."
+            },
+            "heading": {
+              "type": "string",
+              "description": "The heading line exactly as written, such as ## Run locally."
+            }
+          }
+        }
       }
     ],
     "chatSkills": [

@@ -158,6 +158,19 @@ suites:
 | `onboarding.secretCommand` | Command that prints one secret; `{path}` marks where its path goes, e.g. `vault kv get -field=value {path}` |
 | `onboarding.askBeforeFixing` | Off by default, so fixes run without asking. On, each fix shows its command and asks first. A fix that needs another team's approval always waits |
 
+### Copilot skills and tools
+
+The extension gives Copilot agent mode three skills and two tools. They are there only where
+the extension is installed, or in the window F5 opens.
+
+| Name | Kind | Use |
+|---|---|---|
+| `/manifest-writer` | Skill | Draft or change `onboarding.yaml` |
+| `/text-reader` | Skill | Read setup values from a README section; update them when it changes |
+| `/troubleshooter` | Skill | Explain and fix entries that are not ready (Ask Copilot to Help) |
+| `#checkSetup` | Tool | Run check commands, never fixes. Entries that need secrets are not checked |
+| `#sectionSha` | Tool | The SHA of a README section, the same as the README check computes |
+
 ### The Org settings server
 
 Setup asks `GET <onboarding.orgSettingsUrl>?team=<team>`, where `team` comes from the project's

@@ -8,6 +8,7 @@ import { STATUS_DIR, STATUS_FILE, StatusRecorder, emptyStatus, provenFrom, readS
 import { findStale, notifyStale } from './manifest/staleCheck';
 import { runSetup } from './setup/runSetup';
 import { CheckEntriesTool } from './tools/checkEntriesTool';
+import { SectionShaTool } from './tools/sectionShaTool';
 import { fetchOrgSettings, readSecret } from './company/company';
 
 const RUN_FIX = 'Run Fix';
@@ -167,7 +168,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   context.subscriptions.push(
     log,
     vscode.lm.registerMcpServerDefinitionProvider(PROVIDER_ID, mcp),
-    vscode.lm.registerTool(CheckEntriesTool.NAME, new CheckEntriesTool(() => plan.entries)),
+    vscode.lm.registerTool(CheckEntriesTool.NAME, new CheckEntriesTool(() => plan.entries, folder?.uri)),
+    vscode.lm.registerTool(SectionShaTool.NAME, new SectionShaTool(folder?.uri)),
     vscode.commands.registerCommand('onboarding.runSetup', () => runProjectSetup(false)),
     vscode.commands.registerCommand('onboarding.reproveSetup', () => runProjectSetup(true)),
     vscode.commands.registerCommand('onboarding.askCopilot', () => askCopilot(report.notReady())),
