@@ -12,17 +12,21 @@ import { fetchOrgSettings, readSecret } from './company/company';
 const RUN_FIX = 'Run Fix';
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
+  // Register the list before anything else, with nothing to wait for first: until then,
+  // VS Code shows "There is no data provider registered" in the view.
+  const report = new SetupReport();
+  context.subscriptions.push(vscode.window.registerTreeDataProvider('onboarding.report', report));
+
   const folder = vscode.workspace.workspaceFolders?.[0];
   const log = vscode.window.createOutputChannel('Onboarding', { log: true });
   // Chooses the message the empty view shows; see viewsWelcome in package.json.
   const setViewState = (state: 'loading' | 'no-folder' | 'invalid' | 'empty' | 'ready') =>
     vscode.commands.executeCommand('setContext', 'onboarding.viewState', state);
-  await setViewState(folder ? 'loading' : 'no-folder');
+  void setViewState(folder ? 'loading' : 'no-folder');
   let plan: Manifest = { entries: [], mcpServers: [] };
   let preApproved = new Set<string>();
   let running = false;
 
-  const report = new SetupReport();
   const mcp = new ManifestMcpProvider(readSecret);
 
   /** Shows the last results from the status file. Skipped while setup runs, since it shows live results then. */
@@ -147,7 +151,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     log,
-    vscode.window.registerTreeDataProvider('onboarding.report', report),
     vscode.lm.registerMcpServerDefinitionProvider(PROVIDER_ID, mcp),
     vscode.lm.registerTool(CheckEntriesTool.NAME, new CheckEntriesTool(() => plan.entries)),
     vscode.commands.registerCommand('onboarding.runSetup', () => runProjectSetup(false)),
