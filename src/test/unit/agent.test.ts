@@ -41,7 +41,7 @@ suite('Copilot: the troubleshooting prompt', () => {
       '/onboarding-troubleshooter Onboarding setup could not finish "Logs reach Splunk" in this repository. Help me find out why and fix it.',
       '## Logs reach Splunk failed',
       'What happened:\n\n```text\nNo value for SPLUNK_HEC_TOKEN in the secret store.\n```',
-      'Its entry in onboarding.yaml:\n\n```yaml\n- id: splunk\n  title: Logs reach Splunk\n  needs:\n    - vpn\n'
+      'How onboarding.yaml defines it:\n\n```yaml\n- id: splunk\n  title: Logs reach Splunk\n  needs:\n    - vpn\n'
         + '  secrets:\n    SPLUNK_HEC_TOKEN: dev/splunk/hec-token\n  check: test -n "$SPLUNK_HEC_TOKEN"\n```',
       'Notes from the team:\n\nTokens come from the Observability team.',
     ].join('\n\n'));

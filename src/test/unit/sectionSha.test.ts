@@ -4,8 +4,9 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { Entry } from '../../manifest/manifest';
-import { isStale, sectionSha, sectionText, shaOf } from '../../manifest/sectionSha';
-import { UPDATE_ENTRIES, findStale, notifyStale, updatePrompt } from '../../manifest/staleCheck';
+import { headingLine, isStale, sectionSha, sectionText, shaOf } from '../../manifest/sectionSha';
+import { REVIEW_WITH_COPILOT, StaleActions, findStale, notifyStale, staleMessage, updatePrompt } from '../../manifest/staleCheck';
+import { whenQuiet } from '../../util/whenQuiet';
 import { fake } from './vscode.fake';
 
 const README = [
@@ -89,29 +90,105 @@ suite('README check', () => {
     assert.deepStrictEqual((await findStale([outside, missing], vscode.Uri.file(folder))).map(e => e.id), ['x', 'y']);
   });
 
-  test('a changed person value is pointed out, and the agent is told to change nothing', async () => {
-    fake.answer = UPDATE_ENTRIES;
+  /** Actions that record what was asked of them. */
+  const recording = () => {
     const prompts: string[] = [];
-    await notifyStale([entries[1]], async p => void prompts.push(p));
+    const opened: string[] = [];
+    const actions: StaleActions = {
+      openChat: async p => void prompts.push(p),
+      openSection: async (file, section) => void opened.push(`${file} ${section}`),
+    };
+    return { actions, prompts, opened };
+  };
 
-    assert.strictEqual(fake.messages[0].message,
-      'The README text behind a team choice in onboarding.yaml has changed: docker. Check the entry still matches.');
+  test('one step read from the README: which section changed, and which step may be out of date', async () => {
+    const { actions } = recording();
+    await notifyStale([{ ...entries[0], title: 'rbenv, to install Ruby' }], actions);
+    assert.deepStrictEqual(fake.messages, [{
+      kind: 'info',
+      message: 'README.md section "Run locally" has changed. The setup step "rbenv, to install Ruby" is based on it and may be out of date.',
+      items: [REVIEW_WITH_COPILOT, 'Open README.md'],
+    }]);
+  });
+
+  test('a team choice asks the person to check they still agree', () => {
+    assert.strictEqual(staleMessage([{ ...entries[1], title: 'Volta' }]),
+      'README.md section "Run in Docker" has changed. The setup step "Volta" records a team choice written there. Check they still agree.');
+  });
+
+  test('several steps and sections are listed together', () => {
+    const steps: Entry[] = [
+      { id: 'a', title: 'A', check: 'x', from: { source: 'guessed', file: 'README.md', section: '## One', sha256: 'x' } },
+      { id: 'b', title: 'B', check: 'x', from: { source: 'person', file: 'README.md', section: '## One', sha256: 'x' } },
+      { id: 'c', title: 'C', check: 'x', from: { source: 'guessed', file: 'README.md', section: '## Two', sha256: 'x' } },
+    ];
+    assert.strictEqual(staleMessage(steps.slice(0, 2)),
+      'README.md section "One" has changed. 2 setup steps are based on it and may be out of date: "A", "B".');
+    assert.strictEqual(staleMessage(steps),
+      'README.md sections "One" and "Two" have changed. 3 setup steps are based on them and may be out of date: "A", "B", "C".');
+    assert.strictEqual(staleMessage([steps[0], { ...steps[2], from: { ...steps[2].from!, file: 'docs/setup.md' } }]),
+      'These README sections have changed: README.md "One", docs/setup.md "Two". 2 setup steps are based on them and may be out of date: "A", "C".');
+  });
+
+  test('Review with Copilot asks for a comparison, and no change before approval', async () => {
+    fake.answer = REVIEW_WITH_COPILOT;
+    const { actions, prompts } = recording();
+    await notifyStale([entries[1]], actions);
+
     assert.strictEqual(prompts[0], updatePrompt([entries[1]]));
-    assert.match(prompts[0], /^\/onboarding-text-reader /);
-    assert.match(prompts[0], /- docker: README\.md "## Run in Docker" \(a person's choice\)/);
-    assert.match(prompts[0], /For a person's choice, change nothing/);
+    assert.match(prompts[0], /^\/onboarding-text-reader These README sections have changed/);
+    assert.match(prompts[0], /- "docker" \(docker\): README\.md section "## Run in Docker", a team choice/);
+    assert.match(prompts[0], /For a team choice, change\nnothing/);
+    assert.match(prompts[0], /Do not save any change until I approve it\.$/);
+  });
+
+  test('Open README opens the changed section', async () => {
+    fake.answer = 'Open README.md';
+    const { actions, opened } = recording();
+    await notifyStale([entries[0]], actions);
+    assert.deepStrictEqual(opened, ['README.md ## Run locally']);
   });
 
   test('the same change is shown once', async () => {
     const shown = new Set<string>();
-    await notifyStale([entries[0]], async () => undefined, shown);
-    await notifyStale([entries[0]], async () => undefined, shown);
+    const { actions } = recording();
+    await notifyStale([entries[0]], actions, shown);
+    await notifyStale([entries[0]], actions, shown);
     assert.strictEqual(fake.messages.length, 1);
-    assert.strictEqual(fake.messages[0].message, 'The README text behind an entry in onboarding.yaml has changed: rbenv.');
   });
 
   test('nothing changed, nothing shown', async () => {
-    await notifyStale([], async () => undefined);
+    await notifyStale([], recording().actions);
     assert.deepStrictEqual(fake.messages, []);
+  });
+});
+
+suite('README check: timing and finding the section', () => {
+  test('waits until calls stop, then runs once', async () => {
+    let runs = 0;
+    const soon = whenQuiet(() => runs++, 30);
+    soon();
+    await new Promise(r => setTimeout(r, 10));
+    soon();
+    soon();
+    await new Promise(r => setTimeout(r, 15));
+    assert.strictEqual(runs, 0, 'still being called');
+    await new Promise(r => setTimeout(r, 40));
+    assert.strictEqual(runs, 1);
+  });
+
+  test('cancel stops a pending run', async () => {
+    let runs = 0;
+    const soon = whenQuiet(() => runs++, 10);
+    soon();
+    soon.cancel();
+    await new Promise(r => setTimeout(r, 30));
+    assert.strictEqual(runs, 0);
+  });
+
+  test('finds the line of a heading, skipping code blocks', () => {
+    assert.strictEqual(headingLine(README, '## Run locally'), 2);
+    assert.strictEqual(headingLine(README, '## Run in Docker'), 10);
+    assert.strictEqual(headingLine(README, '# Separating the create and migrate tasks'), undefined);
   });
 });

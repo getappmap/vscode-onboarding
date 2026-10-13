@@ -78,7 +78,7 @@ export async function runCommand(
   const script = commandFor(command);
   if (script === undefined) {
     const os = process.platform === 'win32' ? 'Windows' : 'macOS and Linux';
-    return { ok: false, exitCode: -1, output: `This entry has no command for ${os}.` };
+    return { ok: false, exitCode: -1, output: `This setup step has no command for ${os}.` };
   }
   if (token?.isCancellationRequested) {
     return { ok: false, exitCode: -1, output: 'Cancelled before it started.', stopped: 'cancelled' };

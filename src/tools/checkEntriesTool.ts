@@ -17,7 +17,7 @@ export class CheckEntriesTool implements vscode.LanguageModelTool<Input> {
   constructor(private readonly getEntries: () => Entry[], private readonly folder?: vscode.Uri) {}
 
   prepareInvocation(options: vscode.LanguageModelToolInvocationPrepareOptions<Input>) {
-    return { invocationMessage: `Checking ${options.input.entryId ?? 'every setup entry'}` };
+    return { invocationMessage: `Checking ${options.input.entryId ?? 'every setup step'}` };
   }
 
   async invoke(

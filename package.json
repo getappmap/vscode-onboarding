@@ -93,7 +93,7 @@
       {
         "view": "onboarding.report",
         "when": "onboarding.viewState == empty",
-        "contents": "This folder has nothing to set up yet: there is no onboarding.yaml, or it has no entries.\n[Draft Manifest](command:onboarding.draftManifest)"
+        "contents": "This folder has nothing to set up yet: there is no onboarding.yaml, or it lists no setup steps.\n[Draft Manifest](command:onboarding.draftManifest)"
       }
     ],
     "menus": {

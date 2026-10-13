@@ -68,7 +68,7 @@ export function inDependencyOrder(entries: Entry[]): Entry[] {
     const loopStart = visiting.indexOf(entry.id);
     if (loopStart >= 0) {
       const loop = [...visiting.slice(loopStart), entry.id].join(' → ');
-      throw new Error(`These entries depend on each other in a loop: ${loop}`);
+      throw new Error(`These setup steps depend on each other in a loop: ${loop}`);
     }
     visiting.push(entry.id);
     for (const id of entry.dependsOn ?? []) {

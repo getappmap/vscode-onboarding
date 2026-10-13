@@ -32,7 +32,7 @@ export function troubleshootPrompt(items: { status: EntryStatus; entry?: Entry }
     }
     if (entry) {
       const { troubleshooting, ...written } = entry;
-      parts.push(`Its entry in onboarding.yaml:\n\n\`\`\`yaml\n${stringify([written]).trimEnd()}\n\`\`\``);
+      parts.push(`How onboarding.yaml defines it:\n\n\`\`\`yaml\n${stringify([written]).trimEnd()}\n\`\`\``);
       if (troubleshooting) {
         parts.push(`Notes from the team:\n\n${troubleshooting.trimEnd()}`);
       }

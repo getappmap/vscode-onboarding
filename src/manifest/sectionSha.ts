@@ -43,6 +43,21 @@ export function sectionText(markdown: string, heading: string): string | undefin
   return section?.join('\n').trim();
 }
 
+/** The 0-based line number of a heading, skipping lines inside code blocks. Undefined when it is not there. */
+export function headingLine(markdown: string, heading: string): number | undefined {
+  let inCode = false;
+  const lines = markdown.replace(/\r\n/g, '\n').split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    if (!inCode && lines[i].trim() === heading.trim() && HEADING.test(`${heading.trim()} `)) {
+      return i;
+    }
+    if (FENCE.test(lines[i])) {
+      inCode = !inCode;
+    }
+  }
+  return undefined;
+}
+
 /**
  * The first 8 hex characters of the SHA-256 of the text, after changing CRLF line endings
  * to LF so Windows and Linux agree. Manifests already record SHAs this way.
