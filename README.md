@@ -36,10 +36,15 @@ npm install
 | Lint | `npm run lint` |
 | Unit tests, in plain Node | `npm test` |
 | Tests that need VS Code | `npm run test:vscode` |
-| Make a `.vsix` | `npx vsce package` |
+| Make a `.vsix` | `npm run vsix` |
 
 `npm run compile` type-checks, lints, then bundles `src/extension.ts` into `dist/extension.js`
 with esbuild.
+
+`npm run vsix` builds `onboarding-<version>.vsix`, about 60 KB. Everything the extension needs,
+`yaml` included, is in the bundle, so no `node_modules` are packed. Install it with
+**Extensions: Install from VSIX…**. Before publishing to a gallery, set `publisher`, add a
+`repository` and a `LICENSE`, and drop the options in the `vsix` script that skip them.
 
 ## Try it in VS Code
 
