@@ -6,6 +6,17 @@ TODO: steps for reading the repository and writing entries. Rules: check command
 nothing; don't repeat facts other files hold; name secrets by secret store path; give
 windows and posix forms when they differ; put `from:` on every guessed value.
 
+TODO, still to build for this skill (found by trying it on AppLand):
+- An extension tool that returns a README section's SHA, using the same code as the stale
+  check (src/manifest/sectionSha.ts). This skill must tell the agent to use it for every
+  `sha256:` in `from:`, and never compute one itself.
+- The check tool (onboarding_check_entries) works, so the agent can see which entries pass
+  after an edit.
+- Steps that cover a change spread beyond the manifest, such as moving from Docker to
+  Podman: also update the project files that run the old tool (AppLand's `rake dev:db`
+  calls docker-compose) and the README, or ask the person about them.
+- This skill is only there when the extension is installed; the README should say so.
+
 ## Say exactly how each entry is satisfied
 
 A developer who sees an entry fail must know exactly what to do next. Vague setup text in a
