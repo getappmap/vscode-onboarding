@@ -161,7 +161,7 @@ suites:
 |---|---|
 | `onboarding.orgSettingsUrl` | Company settings server for the Org and Team layers. Empty: each project's `onboarding.yaml` alone |
 | `onboarding.secretCommand` | Command that prints one secret; `{path}` marks where its path goes, e.g. `vault kv get -field=value {path}` |
-| `onboarding.askBeforeFixing` | Off by default, so fixes run without asking. On, each fix shows its command and asks first. A fix that needs another team's approval always waits |
+| `onboarding.askBeforeFixing` | Off by default, so fixes run without asking. On, each fix shows its command and asks first |
 
 ### Copilot skills and tools
 
@@ -184,8 +184,7 @@ Setup asks `GET <onboarding.orgSettingsUrl>?team=<team>`, where `team` comes fro
 ```json
 {
   "org": { "entries": [], "mcpServers": [] },
-  "team": { "entries": [] },
-  "preApproved": ["entry-id"]
+  "team": { "entries": [] }
 }
 ```
 

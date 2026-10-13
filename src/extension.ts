@@ -28,7 +28,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.executeCommand('setContext', 'onboarding.viewState', state);
   void setViewState(folder ? 'loading' : 'no-folder');
   let plan: Manifest = { entries: [], mcpServers: [] };
-  let preApproved = new Set<string>();
   let running = false;
 
   const mcp = new ManifestMcpProvider(readSecret, folder?.uri);
@@ -80,12 +79,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     let layers: Manifest[] = [];
     try {
-      const org = await fetchOrgSettings(project?.team);
-      layers = org.layers;
-      preApproved = new Set(org.preApproved);
+      layers = (await fetchOrgSettings(project?.team)).layers;
     } catch (err) {
       log.warn(`Org and Team settings not loaded, so only ${MANIFEST_FILE} is used: ${(err as Error).message}`);
-      preApproved = new Set();
     }
 
     plan = combineLayers(project ? [...layers, project] : layers);
@@ -152,7 +148,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         (progress, token) => {
           report.attachProgress(progress);
           return runSetup(plan.entries, {
-            folder: folder.uri, preApproved, readSecrets, reporter: allOf(report, recorder), token, proven, reprove,
+            folder: folder.uri, readSecrets, reporter: allOf(report, recorder), token, proven, reprove,
             askToFix: vscode.workspace.getConfiguration('onboarding').get('askBeforeFixing', false) ? askToFix : undefined,
           });
         });

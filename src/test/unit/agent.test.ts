@@ -31,7 +31,7 @@ suite('Copilot: the troubleshooting prompt', () => {
     const prompt = troubleshootPrompt([{
       status: { id: 'splunk', title: 'Logs reach Splunk', state: 'failed', detail: 'No value for SPLUNK_HEC_TOKEN in the secret store.' },
       entry: {
-        id: 'splunk', title: 'Logs reach Splunk', needs: ['vpn'],
+        id: 'splunk', title: 'Logs reach Splunk',
         secrets: { SPLUNK_HEC_TOKEN: 'dev/splunk/hec-token' }, check: 'test -n "$SPLUNK_HEC_TOKEN"',
         troubleshooting: 'Tokens come from the Observability team.\n',
       },
@@ -41,7 +41,7 @@ suite('Copilot: the troubleshooting prompt', () => {
       '/onboarding-troubleshooter Onboarding setup could not finish "Logs reach Splunk" in this repository. Help me find out why and fix it.',
       '## Logs reach Splunk failed',
       'What happened:\n\n```text\nNo value for SPLUNK_HEC_TOKEN in the secret store.\n```',
-      'How onboarding.yaml defines it:\n\n```yaml\n- id: splunk\n  title: Logs reach Splunk\n  needs:\n    - vpn\n'
+      'How onboarding.yaml defines it:\n\n```yaml\n- id: splunk\n  title: Logs reach Splunk\n'
         + '  secrets:\n    SPLUNK_HEC_TOKEN: dev/splunk/hec-token\n  check: test -n "$SPLUNK_HEC_TOKEN"\n```',
       'Notes from the team:\n\nTokens come from the Observability team.',
     ].join('\n\n'));

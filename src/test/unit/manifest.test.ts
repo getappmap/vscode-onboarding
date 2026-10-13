@@ -194,7 +194,7 @@ suite('Manifest: combining layers', () => {
       { id: 'proxy', check: 'true' },
       {
         id: 'jdk', uses: 'jdk', with: { version: '17', vendor: 'temurin' },
-        needs: ['admin'], env: { A: '1' }, failMessage: 'org message',
+        dependsOn: ['proxy'], env: { A: '1' }, failMessage: 'org message',
       },
     ],
     mcpServers: [{ name: 'access', url: 'https://org.example.com/mcp' }],
@@ -206,7 +206,7 @@ suite('Manifest: combining layers', () => {
   };
   const project: Manifest = {
     entries: [
-      { id: 'jdk', with: { version: '21' }, needs: ['vpn', 'admin'], env: { B: '2' }, check: 'java -version' },
+      { id: 'jdk', with: { version: '21' }, dependsOn: ['vpn', 'proxy'], env: { B: '2' }, check: 'java -version' },
       { id: 'gradle', uses: 'gradle-wrapper', dependsOn: ['jdk'] },
     ],
     mcpServers: [{ name: 'access', url: 'https://project.example.com/mcp' }],
@@ -224,7 +224,7 @@ suite('Manifest: combining layers', () => {
       id: 'jdk',
       uses: 'jdk',
       with: { version: '21', vendor: 'temurin' },
-      needs: ['admin', 'vpn'],
+      dependsOn: ['proxy', 'vpn'],
       env: { A: '1', B: '2' },
       check: 'java -version',
       failMessage: 'org message',

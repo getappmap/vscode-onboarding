@@ -117,7 +117,7 @@
       "view/item/context": [
         {
           "command": "onboarding.askCopilotAboutEntry",
-          "when": "view == onboarding.report && viewItem =~ /^(failed|skipped|needs-approval)$/",
+          "when": "view == onboarding.report && viewItem =~ /^(failed|skipped)$/",
           "group": "inline"
         }
       ],
@@ -145,7 +145,7 @@
         "onboarding.askBeforeFixing": {
           "type": "boolean",
           "default": false,
-          "description": "Ask before running each fix, showing the exact command. When off, fixes run without asking, except those that need another team's approval."
+          "description": "Ask before running each fix, showing the exact command. When off, fixes run without asking."
         }
       }
     },

@@ -115,7 +115,7 @@ suite('Report: during and after a run', () => {
     report.show([
       { id: 'a', title: 'a', state: 'unchecked' },
       { id: 'b', title: 'b', state: 'failed' },
-      { id: 'c', title: 'c', state: 'needs-approval' },
+      { id: 'c', title: 'c', state: 'skipped' },
       { id: 'd', title: 'd', state: 'ready' },
     ]);
     assert.deepStrictEqual(report.notReady().map(s => s.id), ['b', 'c']);

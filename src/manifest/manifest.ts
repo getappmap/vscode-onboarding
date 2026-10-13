@@ -25,7 +25,6 @@ export interface Entry {
   fix?: Command;                     // puts it in place
   prove?: Command;                   // succeeds when it works
   dependsOn?: string[];
-  needs?: string[];                  // from outside: "admin", "vpn", "approval:<team>"
   env?: Record<string, string>;      // plain values passed to the commands
   secrets?: Record<string, string>;  // ENV_NAME -> secret store path, never a value
   failMessage?: string;
@@ -105,8 +104,8 @@ export function validateManifest(data: unknown, source = MANIFEST_FILE): Manifes
   return compact({ team: v.text(data.team, 'team'), entries, mcpServers });
 }
 
-const ENTRY_KEYS = ['id', 'title', 'uses', 'with', 'check', 'fix', 'prove', 'dependsOn', 'needs',
-  'env', 'secrets', 'failMessage', 'troubleshooting', 'from'];
+const ENTRY_KEYS = ['id', 'title', 'uses', 'with', 'check', 'fix', 'prove', 'dependsOn', 'env',
+  'secrets', 'failMessage', 'troubleshooting', 'from'];
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const SOURCES: Provenance['source'][] = ['person', 'reference', 'guessed', 'confirmed'];
@@ -135,7 +134,6 @@ function readEntry(data: unknown, path: string, v: Validator): Entry {
     fix: v.command(data.fix, `${at}.fix`),
     prove: v.command(data.prove, `${at}.prove`),
     dependsOn: v.textList(data.dependsOn, `${at}.dependsOn`),
-    needs: v.textList(data.needs, `${at}.needs`),
     env: v.textMap(data.env, `${at}.env`, ENV_NAME_PATTERN),
     secrets: v.textMap(data.secrets, `${at}.secrets`, ENV_NAME_PATTERN),
     failMessage: v.text(data.failMessage, `${at}.failMessage`),
@@ -350,7 +348,6 @@ function mergeEntry(earlier: Entry, later: Entry): Entry {
     env: mergeMaps(earlier.env, later.env),
     secrets: mergeMaps(earlier.secrets, later.secrets),
     dependsOn: joinLists(earlier.dependsOn, later.dependsOn),
-    needs: joinLists(earlier.needs, later.needs),
   });
 }
 

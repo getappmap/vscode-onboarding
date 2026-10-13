@@ -7,7 +7,6 @@ import { CommandResult, commandFor, runCommand } from './runCommand';
 
 export interface SetupContext {
   folder: vscode.Uri;
-  preApproved: Set<string>;   // entry ids whose fix the Org approved in advance
   readSecrets(paths: Record<string, string>): Promise<Record<string, string>>;
   /**
    * Shows the developer the exact fix command and asks whether to run it. When left out,
@@ -24,8 +23,6 @@ export interface SetupContext {
   /** Run every entry again, even those proven earlier. */
   reprove?: boolean;
 }
-
-const APPROVAL_PREFIX = 'approval:';
 
 /**
  * A short code for the parts of an entry that decide what runs: its commands (after the
@@ -89,8 +86,7 @@ export function inDependencyOrder(entries: Entry[]): Entry[] {
 /**
  * Takes every entry through the same steps and reports each change:
  *   check -> fix -> check again -> prove.
- * A fix runs unless the entry needs another team's approval that the Org has not given in
- * advance, or the developer is asked (ctx.askToFix) and says no.
+ * A fix runs unless the developer is asked (ctx.askToFix) and says no.
  * An entry proven earlier with the same definition is ready without running anything,
  * unless ctx.reprove is set. Entries that depend on one that is not ready are skipped.
  */
@@ -102,7 +98,7 @@ export async function runSetup(entries: Entry[], ctx: SetupContext): Promise<Ent
       id: entry.id, title: entry.title ?? entry.id, state, ...(detail ? { detail } : {}), ...(because ? { because } : {}),
     };
     statuses.set(entry.id, status);
-    if (state === 'failed' || state === 'needs-approval') {
+    if (state === 'failed') {
       ctx.proven.delete(entry.id);
     }
     ctx.reporter.update(status);
@@ -191,16 +187,9 @@ async function setUpOne(written: Entry, ctx: SetupContext, report: Report): Prom
       report(entry, 'failed', explain(entry, 'Its check failed and its fix has no command for this computer.', check));
       return;
     }
-    if (!ctx.preApproved.has(entry.id)) {
-      const team = entry.needs?.find(n => n.startsWith(APPROVAL_PREFIX))?.slice(APPROVAL_PREFIX.length);
-      if (team !== undefined) {
-        report(entry, 'needs-approval', explain(entry, `Its fix needs approval from ${team || 'another team'}.`, check));
-        return;
-      }
-      if (ctx.askToFix && !(await ctx.askToFix(entry, fixText))) {
-        report(entry, 'failed', explain(entry, 'Its check failed, and you chose not to run the fix.', check));
-        return;
-      }
+    if (ctx.askToFix && !(await ctx.askToFix(entry, fixText))) {
+      report(entry, 'failed', explain(entry, 'Its check failed, and you chose not to run the fix.', check));
+      return;
     }
 
     report(entry, 'fixing');
@@ -239,13 +228,11 @@ async function setUpOne(written: Entry, ctx: SetupContext, report: Report): Prom
   report(entry, 'ready');
 }
 
-/** Plain words for a failure: what happened, the entry's own message, what it needs, then the output. */
+/** Plain words for a failure: what happened, the entry's own message, then the output. */
 function explain(entry: Entry, what: string, result?: CommandResult): string {
-  const outside = entry.needs?.filter(n => !n.startsWith(APPROVAL_PREFIX)) ?? [];
   return [
     what,
     entry.failMessage,
-    outside.length > 0 ? `It needs: ${outside.join(', ')}.` : undefined,
     result?.output ? `Output:\n${result.output}` : undefined,
   ].filter(Boolean).join('\n');
 }

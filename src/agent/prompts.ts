@@ -12,7 +12,6 @@ export const SKILLS = {
 const STATE_WORDS: Partial<Record<EntryStatus['state'], string>> = {
   'failed': 'failed',
   'skipped': 'was skipped',
-  'needs-approval': 'is waiting for approval',
 };
 
 /**

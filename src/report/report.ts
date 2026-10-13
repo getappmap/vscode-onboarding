@@ -8,7 +8,7 @@ export type EntryState =
   | 'unchecked'   // setup has not reached it yet
   | 'waiting'     // queued in the run going now
   | 'checking' | 'fixing' | 'proving'
-  | 'ready' | 'failed' | 'skipped' | 'needs-approval';
+  | 'ready' | 'failed' | 'skipped';
 
 /** Why an entry ended as it did, when the state alone does not say. */
 export type Because = 'proven-earlier' | 'dependency-missing' | 'cancelled';
@@ -40,7 +40,6 @@ const STATE_TEXT: Record<EntryState, string> = {
   'ready': 'Ready',
   'failed': 'Failed',
   'skipped': 'Skipped',
-  'needs-approval': 'Needs approval',
 };
 
 const STATE_ICON: Record<EntryState, [icon: string, color?: string]> = {
@@ -52,7 +51,6 @@ const STATE_ICON: Record<EntryState, [icon: string, color?: string]> = {
   'ready': ['pass', 'testing.iconPassed'],
   'failed': ['error', 'testing.iconFailed'],
   'skipped': ['circle-slash', 'disabledForeground'],
-  'needs-approval': ['shield', 'list.warningForeground'],
 };
 
 /** Added to the state on a row. "Proven earlier" is left out: ready is ready. */
@@ -61,7 +59,7 @@ const BECAUSE_TEXT: Partial<Record<Because, string>> = {
   'cancelled': 'cancelled',
 };
 
-const PROBLEMS: EntryState[] = ['failed', 'skipped', 'needs-approval'];
+const PROBLEMS: EntryState[] = ['failed', 'skipped'];
 
 const RUNNING: EntryState[] = ['checking', 'fixing', 'proving'];
 
@@ -132,7 +130,7 @@ export class SetupReport implements SetupReporter, vscode.TreeDataProvider<Entry
     this.progress = progress;
   }
 
-  /** Rows that failed, were skipped or need approval, for asking Copilot about them. */
+  /** Rows that failed or were skipped, for asking Copilot about them. */
   notReady(): EntryStatus[] {
     return this.statuses.filter(s => PROBLEMS.includes(s.state));
   }

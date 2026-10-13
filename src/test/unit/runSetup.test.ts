@@ -20,7 +20,6 @@ const fail = (message: string): Command => `echo ${message}; exit 1`;
 
 /** A setup context that records what the runner reported and asked. */
 function context(folder: string, options: {
-  preApproved?: string[];
   secrets?: Record<string, string>;
   /** Ask before each fix, giving this answer. Left out, fixes run without asking. */
   answer?: boolean;
@@ -35,7 +34,6 @@ function context(folder: string, options: {
 
   const ctx: SetupContext = {
     folder: vscode.Uri.file(folder),
-    preApproved: new Set(options.preApproved ?? []),
     async readSecrets(paths) {
       secretReads.push(paths);
       const values: Record<string, string> = {};
@@ -127,16 +125,7 @@ suite('runSetup: running entries', function () {
     assert.ok(exists('tool'));
   });
 
-  test('a fix the Org approved runs without asking, even when asking is turned on', async () => {
-    const { ctx, asked, events } = context(folder, { preApproved: ['tool'], answer: false });
-    const result = await runSetup([{ id: 'tool', title: 'The tool', check: fileExists('tool'), fix: touch('tool') }], ctx);
-
-    assert.deepStrictEqual(result, [{ id: 'tool', title: 'The tool', state: 'ready' }]);
-    assert.deepStrictEqual(asked, []);
-    assert.deepStrictEqual(events, ['begin tool', 'tool checking', 'tool fixing', 'tool checking', 'tool ready', 'end 1']);
-  });
-
-  test('with asking turned on, any other fix asks first, showing the exact command', async () => {
+  test('with asking turned on, a fix asks first, showing the exact command', async () => {
     const { ctx, asked } = context(folder, { answer: true });
     const result = await runSetup([{ id: 'tool', check: fileExists('tool'), fix: touch('tool') }], ctx);
 
@@ -160,28 +149,6 @@ suite('runSetup: running entries', function () {
     assert.strictEqual(result[1].because, 'dependency-missing');
   });
 
-  test('a fix that needs another team waits for their approval, without asking', async () => {
-    const { ctx, asked } = context(folder, { answer: true });
-    const byDefault = context(folder);
-    assert.strictEqual((await runSetup([{ id: 'db', check: fileExists('db'), fix: touch('db'), needs: ['approval:dba'] }],
-      byDefault.ctx))[0].state, 'needs-approval', 'also when fixes run without asking');
-    const result = await runSetup([
-      { id: 'db', check: fileExists('db'), fix: touch('db'), needs: ['vpn', 'approval:dba'] },
-      { id: 'app', check: 'exit 0', dependsOn: ['db'] },
-    ], ctx);
-
-    assert.deepStrictEqual(states(result), { db: 'needs-approval', app: 'skipped' });
-    assert.deepStrictEqual(asked, []);
-    assert.ok(!exists('db'));
-    assert.match(result[0].detail!, /^Its fix needs approval from dba\.\nIt needs: vpn\./);
-  });
-
-  test('approval from the Org beats a need for another team', async () => {
-    const { ctx } = context(folder, { preApproved: ['db'] });
-    const result = await runSetup([{ id: 'db', check: fileExists('db'), fix: touch('db'), needs: ['approval:dba'] }], ctx);
-    assert.strictEqual(result[0].state, 'ready');
-  });
-
   test('a failed check with no fix fails with the message and output', async () => {
     const { ctx } = context(folder);
     const result = await runSetup([{ id: 'vpn', check: fail('not-connected'), failMessage: 'Connect to the VPN.' }], ctx);
@@ -191,7 +158,7 @@ suite('runSetup: running entries', function () {
   });
 
   test('a fix that fails, or that leaves the check failing, fails the entry', async () => {
-    const { ctx } = context(folder, { preApproved: ['broken-fix', 'useless-fix'] });
+    const { ctx } = context(folder);
     const result = await runSetup([
       { id: 'broken-fix', check: fileExists('a'), fix: fail('fix-broke') },
       { id: 'useless-fix', check: fileExists('b'), fix: touch('c') },
@@ -238,7 +205,7 @@ suite('runSetup: running entries', function () {
   });
 
   test('secrets are read once, passed to every command, and hidden in the output', async () => {
-    const { ctx, secretReads } = context(folder, { secrets: { 'dev/token': 'tok-12345' }, preApproved: ['svc'] });
+    const { ctx, secretReads } = context(folder, { secrets: { 'dev/token': 'tok-12345' } });
     const showToken: Command = { posix: 'echo "token is $TOKEN"; exit 1', windows: 'Write-Output "token is $env:TOKEN"; exit 1' };
     const result = await runSetup([{
       id: 'svc',

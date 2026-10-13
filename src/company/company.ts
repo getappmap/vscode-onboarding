@@ -4,8 +4,7 @@ import { Manifest, validateManifest } from '../manifest/manifest';
 import { pickShell } from '../setup/runCommand';
 
 export interface OrgSettings {
-  layers: Manifest[];      // Org first, then Team
-  preApproved: string[];   // entry ids whose fix may run without asking
+  layers: Manifest[];   // Org first, then Team
 }
 
 const SETTINGS_TIMEOUT_MS = 10_000;
@@ -14,14 +13,14 @@ const SECRET_TIMEOUT_MS = 60_000;
 /**
  * Fetches the Org and Team layers from the company settings server, named by the
  * onboarding.orgSettingsUrl setting. It answers GET <url>?team=<team> with JSON:
- *   { "org": <manifest>, "team": <manifest or null>, "preApproved": ["entry-id", ...] }
+ *   { "org": <manifest>, "team": <manifest or null> }
  * No server set means no layers. Anything else that goes wrong is an error, which the
  * caller reports before carrying on with the project's manifest alone.
  */
 export async function fetchOrgSettings(team: string | undefined): Promise<OrgSettings> {
   const url = vscode.workspace.getConfiguration('onboarding').get<string>('orgSettingsUrl', '').trim();
   if (!url) {
-    return { layers: [], preApproved: [] };
+    return { layers: [] };
   }
   const address = new URL(url);
   if (address.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(address.hostname)) {
@@ -36,16 +35,12 @@ export async function fetchOrgSettings(team: string | undefined): Promise<OrgSet
   if (!response.ok) {
     throw new Error(`${address.origin} answered ${response.status} ${response.statusText}`);
   }
-  const body = await response.json() as { org?: unknown; team?: unknown; preApproved?: unknown };
+  const body = await response.json() as { org?: unknown; team?: unknown };
   const layers = [validateManifest(body.org ?? {}, 'Org layer')];
   if (body.team) {
     layers.push(validateManifest(body.team, 'Team layer'));
   }
-  const preApproved = body.preApproved ?? [];
-  if (!Array.isArray(preApproved) || !preApproved.every(id => typeof id === 'string')) {
-    throw new Error('preApproved from the settings server must be a list of entry ids');
-  }
-  return { layers, preApproved };
+  return { layers };
 }
 
 /**

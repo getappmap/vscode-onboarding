@@ -66,17 +66,16 @@ suite('Company: Org settings server', function () {
   setup(() => fake.reset());
 
   test('no server set gives no layers', async () => {
-    assert.deepStrictEqual(await fetchOrgSettings('payments'), { layers: [], preApproved: [] });
+    assert.deepStrictEqual(await fetchOrgSettings('payments'), { layers: [] });
   });
 
-  test('reads the Org and Team layers and the pre-approved fixes for the team', async () => {
+  test('reads the Org and Team layers for the team', async () => {
     fake.settings['onboarding.orgSettingsUrl'] = url;
     answer = {
       status: 200,
       body: {
         org: { entries: [{ id: 'proxy', check: 'true' }], mcpServers: [{ name: 'access', url: 'https://access.example.com' }] },
         team: { entries: [{ id: 'vpn', check: 'true' }] },
-        preApproved: ['proxy'],
       },
     };
     const settings = await fetchOrgSettings('payments');
@@ -84,7 +83,6 @@ suite('Company: Org settings server', function () {
     assert.strictEqual(lastPath, '/onboarding?team=payments');
     assert.deepStrictEqual(settings.layers.map(l => l.entries.map(e => e.id)), [['proxy'], ['vpn']]);
     assert.deepStrictEqual(settings.layers[0].mcpServers, [{ name: 'access', url: 'https://access.example.com' }]);
-    assert.deepStrictEqual(settings.preApproved, ['proxy']);
   });
 
   test('no team layer is fine', async () => {

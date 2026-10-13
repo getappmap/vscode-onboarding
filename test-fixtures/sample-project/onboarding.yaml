@@ -13,7 +13,7 @@ entries:
   - id: artifactory-reachable
     uses: http-service
     with: { url: "https://company.jfrog.io/artifactory/api/system/ping" }
-    needs: [vpn]
+    failMessage: Connect to the company VPN.
 
   - id: artifactory-credentials
     title: Artifactory sign-in for Gradle
@@ -30,7 +30,6 @@ entries:
 
   - id: splunk-logging
     title: Logs reach Splunk
-    needs: [vpn]
     env: { SPLUNK_HEC_URL: "https://splunk.example.com:8088/services/collector" }
     secrets: { SPLUNK_HEC_TOKEN: dev/splunk/hec-token }
     check:

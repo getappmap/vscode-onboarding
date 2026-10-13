@@ -19,7 +19,6 @@ entries:
     fix: <command>                  # puts it in place; runs without asking
     prove: <command>                # passes when it works, such as a build or a request
     dependsOn: [other-id]           # run after these; skipped if they are not ready
-    needs: [vpn, "approval:dba"]    # from outside; approval:<team> makes the fix wait
     env: { NAME: value }            # plain values for the commands
     secrets: { NAME: dev/path }     # secret store paths, never values
     failMessage: <one specific next step>
