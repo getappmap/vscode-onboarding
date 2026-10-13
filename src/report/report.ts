@@ -30,6 +30,23 @@ export interface SetupReporter {
 }
 
 export const ASK_COPILOT = 'Ask Copilot to Help';
+export const SHOW_REPORT = 'Show Report';
+
+/** The sidebar view that lists each entry and its result. */
+export const REPORT_VIEW = 'onboarding.report';
+
+/**
+ * Runs setup with its progress in two places: a notification, which can cancel the run, and
+ * the report view, which also marks the Onboarding icon in the sidebar so people know where
+ * the results will be.
+ */
+export function withSetupProgress<T>(
+  task: (progress: vscode.Progress<{ message?: string; increment?: number }>, token: vscode.CancellationToken) => Thenable<T>,
+): Thenable<T> {
+  return vscode.window.withProgress({ location: { viewId: REPORT_VIEW } }, () =>
+    vscode.window.withProgress(
+      { location: vscode.ProgressLocation.Notification, title: 'Onboarding', cancellable: true }, task));
+}
 
 const STATE_TEXT: Record<EntryState, string> = {
   'unchecked': 'Not checked yet',
@@ -159,13 +176,23 @@ export class SetupReport implements SetupReporter, vscode.TreeDataProvider<Entry
     this.progress = undefined;
     this.show(statuses);
 
+    // Clicking a notification's text does nothing, so each one has a button to the report.
     const ready = statuses.filter(s => s.state === 'ready').length;
     if (ready === statuses.length) {
-      void vscode.window.showInformationMessage(`Onboarding complete: ${ready} of ${statuses.length} ready.`);
+      void vscode.window.showInformationMessage(`Onboarding complete: ${ready} of ${statuses.length} ready.`, SHOW_REPORT)
+        .then(choice => choice === SHOW_REPORT && vscode.commands.executeCommand(`${REPORT_VIEW}.focus`));
       return;
     }
-    void vscode.window.showWarningMessage(`Onboarding: ${ready} of ${statuses.length} ready.`, ASK_COPILOT)
-      .then(choice => choice === ASK_COPILOT && vscode.commands.executeCommand('onboarding.askCopilot'));
+    void vscode.window.showWarningMessage(`Onboarding: ${ready} of ${statuses.length} ready.`, SHOW_REPORT, ASK_COPILOT)
+      .then(choice => {
+        if (choice === SHOW_REPORT) {
+          return vscode.commands.executeCommand(`${REPORT_VIEW}.focus`);
+        }
+        if (choice === ASK_COPILOT) {
+          return vscode.commands.executeCommand('onboarding.askCopilot');
+        }
+        return undefined;
+      });
   }
 
   getTreeItem(status: EntryStatus): vscode.TreeItem {

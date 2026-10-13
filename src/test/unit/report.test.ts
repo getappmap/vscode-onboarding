@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import type { Entry } from '../../manifest/manifest';
-import { ASK_COPILOT, EntryStatus, SetupReport, rowsBeforeRun } from '../../report/report';
+import { ASK_COPILOT, EntryStatus, SHOW_REPORT, SetupReport, rowsBeforeRun, withSetupProgress } from '../../report/report';
 import { definitionHash } from '../../setup/runSetup';
 import { fake } from './vscode.fake';
 
@@ -92,12 +92,26 @@ suite('Report: during and after a run', () => {
     assert.deepStrictEqual(report.getChildren().map(r => r.id), ['jdk']);
   });
 
-  test('when all are ready, a short summary', () => {
+  test('when all are ready, a short summary that offers the report', () => {
     report.end([{ id: 'jdk', title: 'Java 21', state: 'ready' }]);
-    assert.deepStrictEqual(fake.messages, [{ kind: 'info', message: 'Onboarding complete: 1 of 1 ready.', items: [] }]);
+    assert.deepStrictEqual(fake.messages, [{ kind: 'info', message: 'Onboarding complete: 1 of 1 ready.', items: [SHOW_REPORT] }]);
   });
 
-  test('when some are not, a warning that offers Copilot', async () => {
+  test('Show Report on the summary opens the report view', async () => {
+    fake.answer = SHOW_REPORT;
+    report.end([{ id: 'jdk', title: 'Java 21', state: 'ready' }]);
+    await settle();
+    assert.deepStrictEqual(fake.executed, ['onboarding.report.focus']);
+  });
+
+  test('Show Report on the warning opens the report view', async () => {
+    fake.answer = SHOW_REPORT;
+    report.end([{ id: 'jdk', title: 'Java 21', state: 'failed' }]);
+    await settle();
+    assert.deepStrictEqual(fake.executed, ['onboarding.report.focus']);
+  });
+
+  test('when some are not, a warning that offers the report and Copilot', async () => {
     fake.answer = ASK_COPILOT;
     const statuses: EntryStatus[] = [
       { id: 'jdk', title: 'Java 21', state: 'ready' },
@@ -106,7 +120,7 @@ suite('Report: during and after a run', () => {
     report.end(statuses);
     await settle();
 
-    assert.deepStrictEqual(fake.messages, [{ kind: 'warning', message: 'Onboarding: 1 of 2 ready.', items: [ASK_COPILOT] }]);
+    assert.deepStrictEqual(fake.messages, [{ kind: 'warning', message: 'Onboarding: 1 of 2 ready.', items: [SHOW_REPORT, ASK_COPILOT] }]);
     assert.deepStrictEqual(fake.executed, ['onboarding.askCopilot']);
     assert.deepStrictEqual(report.notReady().map(s => s.id), ['gradle']);
   });
@@ -174,5 +188,15 @@ suite('Report: rows in the list', () => {
     const item = report.getTreeItem({ id: 'jdk', title: 'Java 21', state: 'proving' });
     assert.strictEqual(item.description, 'Proving');
     assert.strictEqual((item.iconPath as vscode.ThemeIcon).id, 'sync~spin');
+  });
+});
+
+suite('Report: progress', () => {
+  setup(() => fake.reset());
+
+  test('shows on the report view and in a notification, and returns what setup returns', async () => {
+    const result = await withSetupProgress(async () => 'done');
+    assert.strictEqual(result, 'done');
+    assert.deepStrictEqual(fake.progressLocations, [{ viewId: 'onboarding.report' }, vscode.ProgressLocation.Notification]);
   });
 });

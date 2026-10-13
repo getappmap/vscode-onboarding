@@ -87,7 +87,10 @@ export const fake = {
   /** Settings by full name, such as 'onboarding.secretCommand'. */
   settings: {} as Record<string, unknown>,
   trusted: true,
+  /** The location of each withProgress call, outermost first. */
+  progressLocations: [] as unknown[],
   reset(): void {
+    this.progressLocations = [];
     this.settings = {};
     this.trusted = true;
     this.messages = [];
@@ -107,10 +110,19 @@ function showMessage(kind: 'info' | 'warning' | 'error') {
   };
 }
 
+export enum ProgressLocation { SourceControl = 1, Window = 10, Notification = 15 }
+
 export const window = {
   showInformationMessage: showMessage('info'),
   showWarningMessage: showMessage('warning'),
   showErrorMessage: showMessage('error'),
+  withProgress<R>(
+    options: { location: unknown },
+    task: (progress: { report(value: unknown): void }, token: { isCancellationRequested: boolean }) => Thenable<R>,
+  ): Thenable<R> {
+    fake.progressLocations.push(options.location);
+    return task({ report: () => undefined }, { isCancellationRequested: false });
+  },
 };
 
 export const commands = {

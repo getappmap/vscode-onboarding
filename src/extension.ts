@@ -3,7 +3,7 @@ import { getAgentHost } from './agent/agentHost';
 import { SKILLS, troubleshootPrompt } from './agent/prompts';
 import { Entry, MANIFEST_FILE, Manifest, combineLayers, forPlatform, readManifest } from './manifest/manifest';
 import { ManifestMcpProvider, PROVIDER_ID } from './connections/mcpServers';
-import { EntryStatus, SetupReport, allOf, rowsBeforeRun } from './report/report';
+import { EntryStatus, SetupReport, allOf, rowsBeforeRun, withSetupProgress } from './report/report';
 import { STATUS_DIR, STATUS_FILE, StatusRecorder, emptyStatus, provenFrom, readStatus } from './report/statusFile';
 import { findStale, notifyStale } from './manifest/staleCheck';
 import { headingLine } from './manifest/sectionSha';
@@ -143,8 +143,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const recorder = new StatusRecorder(folder.uri.fsPath, status, proven,
       err => log.error(`Could not write ${STATUS_DIR}/${STATUS_FILE}: ${err.message}`));
     try {
-      const statuses = await vscode.window.withProgress(
-        { location: vscode.ProgressLocation.Notification, title: 'Onboarding', cancellable: true },
+      const statuses = await withSetupProgress(
         (progress, token) => {
           report.attachProgress(progress);
           return runSetup(plan.entries, {
