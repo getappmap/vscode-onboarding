@@ -154,6 +154,31 @@ suites:
 
 | Setting | What it does |
 |---|---|
-| `onboarding.orgSettingsUrl` | Company settings server for the Org and Team layers |
-| `onboarding.secretCommand` | Command that prints one secret; `{path}` marks where its path goes |
+| `onboarding.orgSettingsUrl` | Company settings server for the Org and Team layers. Empty: each project's `onboarding.yaml` alone |
+| `onboarding.secretCommand` | Command that prints one secret; `{path}` marks where its path goes, e.g. `vault kv get -field=value {path}` |
 | `onboarding.askBeforeFixing` | Off by default, so fixes run without asking. On, each fix shows its command and asks first. A fix that needs another team's approval always waits |
+
+### The Org settings server
+
+Setup asks `GET <onboarding.orgSettingsUrl>?team=<team>`, where `team` comes from the project's
+`onboarding.yaml`. The answer is JSON:
+
+```json
+{
+  "org": { "entries": [], "mcpServers": [] },
+  "team": { "entries": [] },
+  "preApproved": ["entry-id"]
+}
+```
+
+`org` and `team` are checked like `onboarding.yaml`; `team` may be `null`. If the server cannot
+be reached, setup carries on with the project's `onboarding.yaml` alone and says so in the
+Onboarding log.
+
+### Secrets
+
+Setup runs `onboarding.secretCommand` once for each secret an entry needs, with `{path}`
+replaced by the secret's path from `onboarding.yaml`. The path reaches the command as an
+environment variable, so it cannot break the command's quoting. What the command prints is the
+secret. It is passed only to that entry's commands, and hidden as `***` in any output shown.
+

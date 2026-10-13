@@ -39,6 +39,14 @@ export class FileSystemError extends Error {
 }
 
 export const workspace = {
+  getConfiguration(section?: string) {
+    return {
+      get<T>(key: string, defaultValue?: T): T | undefined {
+        const name = section ? `${section}.${key}` : key;
+        return name in fake.settings ? fake.settings[name] as T : defaultValue;
+      },
+    };
+  },
   workspaceFolders: undefined as { uri: Uri; name: string; index: number }[] | undefined,
   fs: {
     async readFile(uri: Uri): Promise<Uint8Array> {
@@ -64,7 +72,10 @@ export const fake = {
   failing: new Set<string>(),
   answer: undefined as string | undefined,
   chatModels: [] as unknown[],
+  /** Settings by full name, such as 'onboarding.secretCommand'. */
+  settings: {} as Record<string, unknown>,
   reset(): void {
+    this.settings = {};
     this.messages = [];
     this.executed = [];
     this.executedArgs = [];

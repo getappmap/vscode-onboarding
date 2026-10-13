@@ -134,13 +134,13 @@
         "onboarding.orgSettingsUrl": {
           "type": "string",
           "default": "",
-          "description": "Company settings server for the Org and Team layers."
+          "description": "Company settings server for the Org and Team layers and the fixes approved in advance. Must use https, except on this computer. Leave empty to use each project's onboarding.yaml alone."
         },
         "onboarding.secretCommand": {
           "type": "string",
           "default": "",
           "scope": "machine",
-          "description": "Command that prints one secret; {path} marks where its path goes."
+          "description": "Command that prints one secret, signed in as you. {path} marks where the secret's path goes, for example `vault kv get -field=value {path}` or `op read {path}`."
         },
         "onboarding.askBeforeFixing": {
           "type": "boolean",
