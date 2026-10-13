@@ -35,6 +35,9 @@ export const SHOW_REPORT = 'Show Report';
 /** The sidebar view that lists each entry and its result. */
 export const REPORT_VIEW = 'onboarding.report';
 
+/** Opens an entry's page in the status view. Takes the entry id. */
+export const SHOW_ENTRY = 'onboarding.showEntry';
+
 /**
  * Runs setup with its progress in two places: a notification, which can cancel the run, and
  * the report view, which also marks the Onboarding icon in the sidebar so people know where
@@ -76,7 +79,13 @@ const BECAUSE_TEXT: Partial<Record<Because, string>> = {
   'cancelled': 'cancelled',
 };
 
-const PROBLEMS: EntryState[] = ['failed', 'skipped'];
+export const PROBLEMS: EntryState[] = ['failed', 'skipped'];
+
+/** The state in words, with the reason when there is one: "Skipped, dependency missing". */
+export function stateText(status: EntryStatus): string {
+  const because = status.because && BECAUSE_TEXT[status.because];
+  return because ? `${STATE_TEXT[status.state]}, ${because}` : STATE_TEXT[status.state];
+}
 
 const RUNNING: EntryState[] = ['checking', 'fixing', 'proving'];
 
@@ -198,11 +207,11 @@ export class SetupReport implements SetupReporter, vscode.TreeDataProvider<Entry
   getTreeItem(status: EntryStatus): vscode.TreeItem {
     const item = new vscode.TreeItem(status.title, vscode.TreeItemCollapsibleState.None);
     item.id = status.id;
-    const because = status.because && BECAUSE_TEXT[status.because];
-    item.description = because ? `${STATE_TEXT[status.state]}, ${because}` : STATE_TEXT[status.state];
+    item.description = stateText(status);
     const [icon, color] = STATE_ICON[status.state];
     item.iconPath = new vscode.ThemeIcon(icon, color ? new vscode.ThemeColor(color) : undefined);
     item.contextValue = status.state;
+    item.command = { command: SHOW_ENTRY, title: 'Show Details', arguments: [status.id] };
 
     const tooltip = new vscode.MarkdownString();
     tooltip.appendMarkdown(`**${status.title}**: ${STATE_TEXT[status.state]}`);

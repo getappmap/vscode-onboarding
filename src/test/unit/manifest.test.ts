@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
-  Manifest, ManifestError, combineLayers, currentPlatform, forPlatform, parseManifest, readManifest, validateManifest,
+  Manifest, ManifestError, combineLayers, currentPlatform, entryLine, forPlatform, parseManifest, readManifest, validateManifest,
 } from '../../manifest/manifest';
 
 /** Runs fn and returns the ManifestError it throws. */
@@ -302,5 +302,30 @@ suite('Manifest: the plan for this computer', () => {
     assert.strictEqual(currentPlatform('darwin'), 'macos');
     assert.strictEqual(currentPlatform('win32'), 'windows');
     assert.strictEqual(currentPlatform('linux'), 'linux');
+  });
+});
+
+suite('Manifest: finding an entry in the file', () => {
+  const text = [
+    '# onboarding.yaml',          // 0
+    'entries:',                    // 1
+    '  - id: jdk',                 // 2
+    '    check: java -version',    // 3
+    '',                            // 4
+    '  - title: Gradle',           // 5
+    '    id: gradle',              // 6
+    '  - { id: node, check: node -v }', // 7
+  ].join('\n');
+
+  test('gives the line where the entry starts, wherever its id is written', () => {
+    assert.strictEqual(entryLine(text, 'jdk'), 2);
+    assert.strictEqual(entryLine(text, 'gradle'), 5);
+    assert.strictEqual(entryLine(text, 'node'), 7);
+  });
+
+  test('gives nothing for an id that is not there, or a file with no entries', () => {
+    assert.strictEqual(entryLine(text, 'ruby'), undefined);
+    assert.strictEqual(entryLine('team: payments\n', 'jdk'), undefined);
+    assert.strictEqual(entryLine('entries: [', 'jdk'), undefined);
   });
 });

@@ -127,6 +127,8 @@ src/
   setup/presets.ts            Built-in commands for common needs (jdk, ...)
   setup/runSetup.ts           Check, fix, prove each entry in order
   report/report.ts            Progress notification and the Onboarding list
+  report/statusView.ts        The status view: an editor tab with the list and one page per entry
+  report/statusPage.ts        The status view's HTML (no VS Code imports)
   connections/mcpServers.ts   Hands the manifest's MCP servers to Copilot
   tools/checkEntriesTool.ts   Lets Copilot run check commands
   company/company.ts          Org settings server and secret store

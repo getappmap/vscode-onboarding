@@ -10,10 +10,25 @@ suite('Extension', () => {
     const commands = await vscode.commands.getCommands(true);
     for (const id of [
       'onboarding.runSetup', 'onboarding.reproveSetup', 'onboarding.askCopilot', 'onboarding.askCopilotAboutEntry',
-      'onboarding.showLog', 'onboarding.draftManifest',
+      'onboarding.showLog', 'onboarding.draftManifest', 'onboarding.showStatus', 'onboarding.showEntry',
     ]) {
       assert.ok(commands.includes(id), `${id} is not registered`);
     }
+  });
+
+  test('the status view opens as an editor tab', async () => {
+    const isStatus = (tab: vscode.Tab) =>
+      tab.input instanceof vscode.TabInputWebview && tab.input.viewType.endsWith('onboarding.status');
+    const findTab = () => vscode.window.tabGroups.all.flatMap(group => group.tabs).find(isStatus);
+    // The tab list catches up with a new webview panel a moment later.
+    const opened = new Promise<void>(resolve => {
+      const listener = vscode.window.tabGroups.onDidChangeTabs(() => findTab() && (listener.dispose(), resolve()));
+    });
+    await vscode.commands.executeCommand('onboarding.showStatus');
+    await Promise.race([opened, new Promise(resolve => setTimeout(resolve, 5_000))]);
+    const status = findTab();
+    assert.ok(status, 'no status view tab');
+    await vscode.window.tabGroups.close(status);
   });
 
   test('the Onboarding list has its own Activity Bar icon', async () => {

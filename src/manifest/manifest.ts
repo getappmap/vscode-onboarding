@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { parseDocument } from 'yaml';
+import { isMap as isYamlMap, isSeq as isYamlSeq, parseDocument } from 'yaml';
 import { PRESET_NAMES } from '../setup/presets';
 
 /** Plain text runs in the default shell for the computer: PowerShell on Windows, sh elsewhere.
@@ -91,6 +91,17 @@ export function parseManifest(text: string, source = MANIFEST_FILE): Manifest {
     throw new ManifestError(source, doc.errors.map(e => e.message.split('\n')[0]));
   }
   return validateManifest(doc.toJS() ?? {}, source);
+}
+
+/** The line, counted from 0, where the entry with this id starts in manifest text. Undefined if it is not there. */
+export function entryLine(text: string, id: string): number | undefined {
+  const entries = parseDocument(text, { schema: 'failsafe' }).get('entries');
+  if (!isYamlSeq(entries)) {
+    return undefined;
+  }
+  const entry = entries.items.find(item => isYamlMap(item) && item.get('id') === id);
+  const start = isYamlMap(entry) ? entry.range?.[0] : undefined;
+  return start === undefined ? undefined : text.slice(0, start).split('\n').length - 1;
 }
 
 /** Checks parsed data, from YAML or from the Org settings server, and returns it as a Manifest. */

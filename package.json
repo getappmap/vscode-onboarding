@@ -55,6 +55,17 @@
         "command": "onboarding.showLog",
         "title": "Show Log",
         "category": "Onboarding"
+      },
+      {
+        "command": "onboarding.showStatus",
+        "title": "Show Setup Status",
+        "category": "Onboarding",
+        "icon": "$(open-preview)"
+      },
+      {
+        "command": "onboarding.showEntry",
+        "title": "Show Details",
+        "category": "Onboarding"
       }
     ],
     "viewsContainers": {
@@ -109,6 +120,11 @@
           "group": "navigation"
         },
         {
+          "command": "onboarding.showStatus",
+          "when": "view == onboarding.report",
+          "group": "navigation"
+        },
+        {
           "command": "onboarding.reproveSetup",
           "when": "view == onboarding.report",
           "group": "more@1"
@@ -124,6 +140,10 @@
       "commandPalette": [
         {
           "command": "onboarding.askCopilotAboutEntry",
+          "when": "false"
+        },
+        {
+          "command": "onboarding.showEntry",
           "when": "false"
         }
       ]

@@ -89,8 +89,11 @@ export const fake = {
   trusted: true,
   /** The location of each withProgress call, outermost first. */
   progressLocations: [] as unknown[],
+  /** Every webview panel created, oldest first. */
+  panels: [] as WebviewPanel[],
   reset(): void {
     this.progressLocations = [];
+    this.panels = [];
     this.settings = {};
     this.trusted = true;
     this.messages = [];
@@ -112,6 +115,60 @@ function showMessage(kind: 'info' | 'warning' | 'error') {
 
 export enum ProgressLocation { SourceControl = 1, Window = 10, Notification = 15 }
 
+export enum ViewColumn { Active = -1, Beside = -2, One = 1, Two = 2 }
+
+/**
+ * A webview panel. `send` stands in for the page's script posting a message. As in the real one,
+ * a disposed panel fires onDidDispose once, and setting html or revealing it afterwards throws.
+ */
+export class WebviewPanel {
+  title: string;
+  iconPath?: ThemeIcon;
+  reveals = 0;
+  disposed = false;
+  private readonly disposeEmitter = new EventEmitter<void>();
+  private readonly messageEmitter = new EventEmitter<unknown>();
+  private htmlValue = '';
+  readonly onDidDispose = this.disposeEmitter.event;
+  readonly webview: { cspSource: string; onDidReceiveMessage: EventEmitter<unknown>['event']; html: string };
+
+  constructor(readonly viewType: string, title: string, readonly showOptions: unknown, readonly options: unknown) {
+    this.title = title;
+    const panel = this;
+    this.webview = {
+      cspSource: 'vscode-webview://fake',
+      onDidReceiveMessage: this.messageEmitter.event,
+      get html(): string {
+        return panel.htmlValue;
+      },
+      set html(value: string) {
+        if (panel.disposed) {
+          throw new Error('Webview is disposed');
+        }
+        panel.htmlValue = value;
+      },
+    };
+  }
+
+  reveal(): void {
+    if (this.disposed) {
+      throw new Error('Webview is disposed');
+    }
+    this.reveals++;
+  }
+
+  dispose(): void {
+    if (!this.disposed) {
+      this.disposed = true;
+      this.disposeEmitter.fire();
+    }
+  }
+
+  send(message: unknown): void {
+    this.messageEmitter.fire(message);
+  }
+}
+
 export const window = {
   showInformationMessage: showMessage('info'),
   showWarningMessage: showMessage('warning'),
@@ -122,6 +179,11 @@ export const window = {
   ): Thenable<R> {
     fake.progressLocations.push(options.location);
     return task({ report: () => undefined }, { isCancellationRequested: false });
+  },
+  createWebviewPanel(viewType: string, title: string, showOptions: unknown, options?: unknown): WebviewPanel {
+    const panel = new WebviewPanel(viewType, title, showOptions, options);
+    fake.panels.push(panel);
+    return panel;
   },
 };
 
@@ -163,6 +225,7 @@ export class TreeItem {
   iconPath?: ThemeIcon;
   tooltip?: MarkdownString;
   contextValue?: string;
+  command?: { command: string; title: string; arguments?: unknown[] };
 
   constructor(readonly label: string, readonly collapsibleState = TreeItemCollapsibleState.None) {}
 }

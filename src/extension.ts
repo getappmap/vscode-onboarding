@@ -1,9 +1,10 @@
 import * as vscode from 'vscode';
 import { getAgentHost } from './agent/agentHost';
 import { SKILLS, troubleshootPrompt } from './agent/prompts';
-import { Entry, MANIFEST_FILE, Manifest, combineLayers, forPlatform, readManifest } from './manifest/manifest';
+import { Entry, MANIFEST_FILE, Manifest, combineLayers, entryLine, forPlatform, readManifest } from './manifest/manifest';
 import { ManifestMcpProvider, PROVIDER_ID } from './connections/mcpServers';
-import { EntryStatus, SetupReport, allOf, rowsBeforeRun, withSetupProgress } from './report/report';
+import { EntryStatus, SHOW_ENTRY, SetupReport, allOf, rowsBeforeRun, withSetupProgress } from './report/report';
+import { StatusView } from './report/statusView';
 import { STATUS_DIR, STATUS_FILE, StatusRecorder, emptyStatus, provenFrom, readStatus } from './report/statusFile';
 import { findStale, notifyStale } from './manifest/staleCheck';
 import { headingLine } from './manifest/sectionSha';
@@ -28,6 +29,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.executeCommand('setContext', 'onboarding.viewState', state);
   void setViewState(folder ? 'loading' : 'no-folder');
   let plan: Manifest = { entries: [], mcpServers: [] };
+  let projectIds = new Set<string>();   // entries in the project's onboarding.yaml, not only the Org or Team layer
   let running = false;
 
   const mcp = new ManifestMcpProvider(readSecret, folder?.uri);
@@ -85,6 +87,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
 
     plan = forPlatform(combineLayers(project ? [...layers, project] : layers));
+    projectIds = new Set(project?.entries.map(e => e.id));
     mcp.update(plan.mcpServers);
     await showLastResults();
     await setViewState(invalid ? 'invalid' : plan.entries.length === 0 ? 'empty' : 'ready');
@@ -172,6 +175,21 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     await getAgentHost().openChat(troubleshootPrompt(items));
   };
 
+  const openInManifest = async (id: string) => {
+    const uri = vscode.Uri.joinPath(folder!.uri, MANIFEST_FILE);
+    const line = entryLine(Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf8'), id) ?? 0;
+    await vscode.window.showTextDocument(uri, { selection: new vscode.Range(line, 0, line, 0) });
+  };
+
+  const statusView = new StatusView({
+    statuses: () => report.getChildren(),
+    entry: id => plan.entries.find(e => e.id === id),
+    inProjectManifest: id => projectIds.has(id),
+    openInManifest,
+    askCopilot: status => askCopilot([status]),
+    runSetup: async () => void await runProjectSetup(false),
+  }, report.onDidChangeTreeData);
+
   context.subscriptions.push(
     log,
     vscode.lm.registerMcpServerDefinitionProvider(PROVIDER_ID, mcp),
@@ -183,6 +201,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // The button on a row passes that row.
     vscode.commands.registerCommand('onboarding.askCopilotAboutEntry', (status: EntryStatus) => askCopilot([status])),
     vscode.commands.registerCommand('onboarding.showLog', () => log.show()),
+    statusView,
+    vscode.commands.registerCommand('onboarding.showStatus', () => statusView.showList()),
+    // Clicking a row in the sidebar passes its id.
+    vscode.commands.registerCommand(SHOW_ENTRY, (id: string) => statusView.showEntry(id)),
     vscode.commands.registerCommand('onboarding.draftManifest', () =>
       getAgentHost().openChat(`/${SKILLS.manifestWriter} Draft onboarding.yaml for this repository.`)),
   );
