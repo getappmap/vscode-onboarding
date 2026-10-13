@@ -7,7 +7,16 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 
 export class Uri {
+  private raw?: string;
+
   private constructor(readonly fsPath: string) {}
+
+  /** Keeps the text as given; only toString is used for parsed URIs. */
+  static parse(value: string): Uri {
+    const uri = new Uri(value);
+    uri.raw = value;
+    return uri;
+  }
 
   static file(fsPath: string): Uri {
     return new Uri(path.resolve(fsPath));
@@ -22,7 +31,7 @@ export class Uri {
   }
 
   toString(): string {
-    return `file://${this.path}`;
+    return this.raw ?? `file://${this.path}`;
   }
 }
 
@@ -162,4 +171,17 @@ export class MarkdownString {
     this.value += `\n\`\`\`${language}\n${code}\n\`\`\`\n`;
     return this;
   }
+}
+
+export class McpHttpServerDefinition {
+  constructor(readonly label: string, public uri: Uri, public headers: Record<string, string> = {}, public version?: string) {}
+}
+
+export class McpStdioServerDefinition {
+  cwd?: Uri;
+
+  constructor(
+    readonly label: string, public command: string, public args: string[] = [],
+    public env: Record<string, string | number | null> = {}, public version?: string,
+  ) {}
 }

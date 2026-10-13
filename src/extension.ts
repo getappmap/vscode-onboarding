@@ -27,7 +27,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   let preApproved = new Set<string>();
   let running = false;
 
-  const mcp = new ManifestMcpProvider(readSecret);
+  const mcp = new ManifestMcpProvider(readSecret, folder?.uri);
 
   /** Shows the last results from the status file. Skipped while setup runs, since it shows live results then. */
   const showLastResults = async () => {

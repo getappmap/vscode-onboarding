@@ -206,6 +206,9 @@ function readServer(data: unknown, path: string, v: Validator): McpServerEntry {
   if ((server.url === undefined) === (server.command === undefined)) {
     v.problem(at, 'needs either a url or a command, not both');
   }
+  if (server.tokenSecret !== undefined && server.command !== undefined) {
+    v.problem(`${at}.tokenSecret`, 'works only with a url: the token is sent in the Authorization header');
+  }
   if (server.command?.length === 0) {
     v.problem(`${at}.command`, 'must name the program to run');
   }

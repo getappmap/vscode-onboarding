@@ -152,6 +152,7 @@ suite('Manifest: problems', () => {
       'mcpServers:',
       '  - { name: both, url: "https://x", command: [x] }',
       '  - { name: neither }',
+      '  - { name: local-token, command: [node, s.js], tokenSecret: dev/x }',
     ].join('\n')));
 
     for (const expected of [
@@ -170,6 +171,7 @@ suite('Manifest: problems', () => {
       'entries[11].id: "has space" may use only',
       'mcpServers[0] (both): needs either a url or a command',
       'mcpServers[1] (neither): needs either a url or a command',
+      'mcpServers[2] (local-token).tokenSecret: works only with a url',
     ]) {
       assertProblem(problems, expected);
     }
