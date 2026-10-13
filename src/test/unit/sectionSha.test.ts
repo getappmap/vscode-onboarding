@@ -158,6 +158,7 @@ suite('README check', () => {
   });
 
   test('nothing changed, nothing shown', async () => {
+    assert.strictEqual(staleMessage([]), '');
     await notifyStale([], recording().actions);
     assert.deepStrictEqual(fake.messages, []);
   });

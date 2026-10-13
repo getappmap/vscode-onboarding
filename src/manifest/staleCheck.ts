@@ -56,6 +56,9 @@ function quotedList(items: string[]): string {
 
 /** Plain words for someone who does not know how onboarding works: what changed, and what it affects. */
 export function staleMessage(stale: Entry[]): string {
+  if (stale.length === 0) {
+    return '';
+  }
   const sections = sectionsOf(stale);
   const files = [...new Set(sections.map(s => s.file))];
   const changed = sections.length === 1
