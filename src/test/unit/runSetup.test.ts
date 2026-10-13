@@ -103,6 +103,26 @@ suite('runSetup: running entries', function () {
   teardown(() => fs.rmSync(folder, { recursive: true, force: true }));
   const exists = (name: string) => fs.existsSync(path.join(folder, name));
 
+  test('shows each command, its output and how it ended, with secrets masked', async () => {
+    const { ctx } = context(folder, { secrets: { 'dev/token': 's3cr3t-value' } });
+    const seen: string[] = [];
+    ctx.output = {
+      commandStarted: (entry, step) => seen.push(`start ${entry.id} ${step}`),
+      commandLine: line => seen.push(`  ${line}`),
+      commandEnded: result => seen.push(`end ${result.exitCode}`),
+    };
+    await runSetup([{
+      id: 'tool', secrets: { TOKEN: 'dev/token' },
+      check: { posix: `echo "token $TOKEN"; test -f tool`, windows: `"token $env:TOKEN"; if (-not (Test-Path tool)) { exit 1 }` },
+      fix: touch('tool'),
+    }], ctx);
+    assert.deepStrictEqual(seen, [
+      'start tool check', '  token ***', 'end 1',
+      'start tool fix', 'end 0',
+      'start tool check', '  token ***', 'end 0',
+    ]);
+  });
+
   test('an entry already in place is proved and ready, and its fix does not run', async () => {
     fs.writeFileSync(path.join(folder, 'tool'), '');
     const { ctx, events } = context(folder);

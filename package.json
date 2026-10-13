@@ -57,6 +57,12 @@
         "category": "Onboarding"
       },
       {
+        "command": "onboarding.showOutput",
+        "title": "Show Setup Output",
+        "category": "Onboarding",
+        "icon": "$(output)"
+      },
+      {
         "command": "onboarding.showStatus",
         "title": "Show Setup Status",
         "category": "Onboarding",
@@ -128,6 +134,11 @@
           "command": "onboarding.reproveSetup",
           "when": "view == onboarding.report",
           "group": "more@1"
+        },
+        {
+          "command": "onboarding.showOutput",
+          "when": "view == onboarding.report",
+          "group": "more@2"
         }
       ],
       "view/item/context": [

@@ -4,6 +4,7 @@ import { SKILLS, troubleshootPrompt } from './agent/prompts';
 import { Entry, MANIFEST_FILE, Manifest, combineLayers, entryLine, forPlatform, readManifest } from './manifest/manifest';
 import { ManifestMcpProvider, PROVIDER_ID } from './connections/mcpServers';
 import { EntryStatus, SHOW_ENTRY, SetupReport, allOf, rowsBeforeRun, withSetupProgress } from './report/report';
+import { OUTPUT_CHANNEL, SetupOutput } from './report/setupOutput';
 import { StatusView } from './report/statusView';
 import { STATUS_DIR, STATUS_FILE, StatusRecorder, emptyStatus, provenFrom, readStatus } from './report/statusFile';
 import { findStale, notifyStale } from './manifest/staleCheck';
@@ -24,6 +25,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const folder = vscode.workspace.workspaceFolders?.[0];
   const log = vscode.window.createOutputChannel('Onboarding', { log: true });
+  // Plain, not a log channel, so command output is not prefixed with a time and level.
+  const setupChannel = vscode.window.createOutputChannel(OUTPUT_CHANNEL);
+  const setupOutput = new SetupOutput(setupChannel);
   // Chooses the message the empty view shows; see viewsWelcome in package.json.
   const setViewState = (state: 'loading' | 'no-folder' | 'invalid' | 'empty' | 'ready') =>
     vscode.commands.executeCommand('setContext', 'onboarding.viewState', state);
@@ -150,7 +154,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         (progress, token) => {
           report.attachProgress(progress);
           return runSetup(plan.entries, {
-            folder: folder.uri, readSecrets, reporter: allOf(report, recorder), token, proven, reprove,
+            folder: folder.uri, readSecrets, reporter: allOf(report, recorder, setupOutput), output: setupOutput,
+            token, proven, reprove,
             askToFix: vscode.workspace.getConfiguration('onboarding').get('askBeforeFixing', false) ? askToFix : undefined,
           });
         });
@@ -201,6 +206,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     // The button on a row passes that row.
     vscode.commands.registerCommand('onboarding.askCopilotAboutEntry', (status: EntryStatus) => askCopilot([status])),
     vscode.commands.registerCommand('onboarding.showLog', () => log.show()),
+    setupChannel,
+    vscode.commands.registerCommand('onboarding.showOutput', () => setupChannel.show(true)),
     statusView,
     vscode.commands.registerCommand('onboarding.showStatus', () => statusView.showList()),
     // Clicking a row in the sidebar passes its id.

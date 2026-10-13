@@ -2,7 +2,7 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { commandFor, mask, pickShell, runCommand } from '../../setup/runCommand';
+import { LineSplitter, commandFor, mask, pickShell, runCommand } from '../../setup/runCommand';
 
 const isWindows = process.platform === 'win32';
 
@@ -61,6 +61,19 @@ suite('runCommand: masking', () => {
   });
 });
 
+suite('runCommand: lines of output', () => {
+  test('joins a line, and a character, split across chunks', () => {
+    const lines: string[] = [];
+    const splitter = new LineSplitter(line => lines.push(line));
+    const euro = Buffer.from('€');
+    splitter.add(Buffer.from('one\r\ntok'));
+    splitter.add(Buffer.concat([Buffer.from('en\n'), euro.subarray(0, 1)]));
+    splitter.add(Buffer.concat([euro.subarray(1), Buffer.from('\nlast')]));
+    splitter.end();
+    assert.deepStrictEqual(lines, ['one', 'token', '€', 'last']);
+  });
+});
+
 suite('runCommand: running', function () {
   this.timeout(20_000);
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'onboarding-run-'));
@@ -95,6 +108,14 @@ suite('runCommand: running', function () {
       { posix: 'for i in 1 2 3 4 5 6; do echo line$i; done', windows: '1..6 | ForEach-Object { "line$_" }' },
       cwd, {}, undefined, { maxLines: 2 });
     assert.strictEqual(result.output, '…\nline5\nline6');
+  });
+
+  test('gives each line as it arrives, secrets masked, the last one even without a newline', async () => {
+    const lines: string[] = [];
+    await runCommand(
+      { posix: 'echo one; echo "token $TOKEN"; printf last', windows: '"one"; "token $env:TOKEN"; [Console]::Out.Write("last")' },
+      cwd, { TOKEN: 's3cr3t-value' }, undefined, { secrets: ['s3cr3t-value'], onLine: line => lines.push(line) });
+    assert.deepStrictEqual(lines, ['one', 'token ***', 'last']);
   });
 
   test('a command waiting for input gets end of input instead of hanging', async () => {

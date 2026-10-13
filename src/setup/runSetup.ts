@@ -5,6 +5,16 @@ import type { Because, EntryState, EntryStatus, SetupReporter } from '../report/
 import { expandPreset } from './presets';
 import { CommandResult, commandFor, runCommand } from './runCommand';
 
+export type Step = 'check' | 'fix' | 'prove';
+
+/** Receives each command and its output as setup runs it. */
+export interface CommandOutput {
+  commandStarted(entry: Entry, step: Step, command: string): void;
+  /** One line of output, secrets masked. */
+  commandLine(line: string): void;
+  commandEnded(result: CommandResult, ms: number): void;
+}
+
 export interface SetupContext {
   folder: vscode.Uri;
   readSecrets(paths: Record<string, string>): Promise<Record<string, string>>;
@@ -14,6 +24,8 @@ export interface SetupContext {
    */
   askToFix?(entry: Entry, command: string): Promise<boolean>;
   reporter: SetupReporter;
+  /** Where to show each command and its output as it runs. */
+  output?: CommandOutput;
   token: vscode.CancellationToken;
   /**
    * Entry id -> definitionHash of the entries proven on this computer. An entry found here
@@ -159,8 +171,20 @@ async function setUpOne(written: Entry, ctx: SetupContext, report: Report): Prom
     }
   }
 
-  const run = (command: Command) => runCommand(command, ctx.folder.fsPath, { ...entry.env, ...secrets }, ctx.token,
-    { secrets: Object.values(secrets) });
+  const output = ctx.output;
+  const run = async (step: Step, command: Command) => {
+    const text = commandFor(command);
+    if (text !== undefined) {
+      output?.commandStarted(entry, step, text);
+    }
+    const started = Date.now();
+    const result = await runCommand(command, ctx.folder.fsPath, { ...entry.env, ...secrets }, ctx.token,
+      { secrets: Object.values(secrets), onLine: output && (line => output.commandLine(line)) });
+    if (text !== undefined) {
+      output?.commandEnded(result, Date.now() - started);
+    }
+    return result;
+  };
   // A command stopped by Cancel ends the entry as skipped, not failed.
   const stoppedByCancel = (result: CommandResult) => result.stopped === 'cancelled'
     && report(entry, 'skipped', 'Setup was cancelled.', 'cancelled');
@@ -172,7 +196,7 @@ async function setUpOne(written: Entry, ctx: SetupContext, report: Report): Prom
   const checkCommand = entry.check;
 
   report(entry, 'checking');
-  let check = await run(checkCommand);
+  let check = await run('check', checkCommand);
   if (stoppedByCancel(check)) {
     return;
   }
@@ -193,7 +217,7 @@ async function setUpOne(written: Entry, ctx: SetupContext, report: Report): Prom
     }
 
     report(entry, 'fixing');
-    const fix = await run(entry.fix);
+    const fix = await run('fix', entry.fix);
     if (stoppedByCancel(fix)) {
       return;
     }
@@ -203,7 +227,7 @@ async function setUpOne(written: Entry, ctx: SetupContext, report: Report): Prom
     }
 
     report(entry, 'checking');
-    check = await run(checkCommand);
+    check = await run('check', checkCommand);
     if (stoppedByCancel(check)) {
       return;
     }
@@ -215,7 +239,7 @@ async function setUpOne(written: Entry, ctx: SetupContext, report: Report): Prom
 
   if (entry.prove) {
     report(entry, 'proving');
-    const prove = await run(entry.prove);
+    const prove = await run('prove', entry.prove);
     if (stoppedByCancel(prove)) {
       return;
     }

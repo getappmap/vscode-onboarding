@@ -1,6 +1,7 @@
 import { spawn, spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { StringDecoder } from 'string_decoder';
 import type { Command } from '../manifest/manifest';
 
 export interface CommandResult {
@@ -17,6 +18,8 @@ export interface RunOptions {
   timeoutMs?: number;
   /** How many lines of output to keep. Default 40. */
   maxLines?: number;
+  /** Called with each line of output as it arrives, secrets masked. */
+  onLine?: (line: string) => void;
 }
 
 export interface Shell {
@@ -104,8 +107,13 @@ export async function runCommand(
     });
 
     const output = new TailBuffer(MAX_BUFFER_BYTES);
-    child.stdout.on('data', (chunk: Buffer) => output.add(chunk));
-    child.stderr.on('data', (chunk: Buffer) => output.add(chunk));
+    const lines = options.onLine && new LineSplitter(line => options.onLine!(mask(line, options.secrets ?? [])));
+    const add = (chunk: Buffer) => {
+      output.add(chunk);
+      lines?.add(chunk);
+    };
+    child.stdout.on('data', add);
+    child.stderr.on('data', add);
 
     let stopped: CommandResult['stopped'];
     const stop = (why: NonNullable<CommandResult['stopped']>) => {
@@ -123,10 +131,12 @@ export async function runCommand(
 
     child.on('error', err => {
       cleanUp();
+      lines?.end();
       resolve(finish(-1, output.text(), `Could not start ${shell.program}: ${err.message}`));
     });
     child.on('close', code => {
       cleanUp();
+      lines?.end();
       const seconds = Math.max(1, Math.round(timeoutMs / 1000));
       const note = stopped === 'timeout' ? `Stopped after ${seconds} second${seconds === 1 ? '' : 's'}.`
         : stopped === 'cancelled' ? 'Cancelled.'
@@ -173,6 +183,31 @@ class TailBuffer {
     const text = Buffer.concat(this.chunks).toString('utf8');
     // The first line may have been cut part way through, so it is dropped.
     return this.dropped ? text.slice(text.indexOf('\n') + 1) : text;
+  }
+}
+
+/**
+ * Cuts output into whole lines, so a secret is masked even when it arrives in two chunks.
+ * A character split across chunks is also kept whole.
+ */
+export class LineSplitter {
+  private readonly decoder = new StringDecoder('utf8');
+  private pending = '';
+
+  constructor(private readonly onLine: (line: string) => void) {}
+
+  add(chunk: Buffer): void {
+    const lines = (this.pending + this.decoder.write(chunk)).split('\n');
+    this.pending = lines.pop()!;
+    lines.forEach(line => this.onLine(line.replace(/\r$/, '')));
+  }
+
+  end(): void {
+    const rest = this.pending + this.decoder.end();
+    this.pending = '';
+    if (rest) {
+      this.onLine(rest.replace(/\r$/, ''));
+    }
   }
 }
 
