@@ -9,8 +9,11 @@ export interface SetupContext {
   folder: vscode.Uri;
   preApproved: Set<string>;   // entry ids whose fix the Org approved in advance
   readSecrets(paths: Record<string, string>): Promise<Record<string, string>>;
-  /** Shows the developer the exact fix command and asks whether to run it. */
-  askToFix(entry: Entry, command: string): Promise<boolean>;
+  /**
+   * Shows the developer the exact fix command and asks whether to run it. When left out,
+   * fixes run without asking, which is the default.
+   */
+  askToFix?(entry: Entry, command: string): Promise<boolean>;
   reporter: SetupReporter;
   token: vscode.CancellationToken;
   /**
@@ -85,7 +88,9 @@ export function inDependencyOrder(entries: Entry[]): Entry[] {
 
 /**
  * Takes every entry through the same steps and reports each change:
- *   check -> (fix, only if pre-approved or the developer agrees) -> check again -> prove.
+ *   check -> fix -> check again -> prove.
+ * A fix runs unless the entry needs another team's approval that the Org has not given in
+ * advance, or the developer is asked (ctx.askToFix) and says no.
  * An entry proven earlier with the same definition is ready without running anything,
  * unless ctx.reprove is set. Entries that depend on one that is not ready are skipped.
  */
@@ -192,7 +197,7 @@ async function setUpOne(written: Entry, ctx: SetupContext, report: Report): Prom
         report(entry, 'needs-approval', explain(entry, `Its fix needs approval from ${team || 'another team'}.`, check));
         return;
       }
-      if (!(await ctx.askToFix(entry, fixText))) {
+      if (ctx.askToFix && !(await ctx.askToFix(entry, fixText))) {
         report(entry, 'failed', explain(entry, 'Its check failed, and you chose not to run the fix.', check));
         return;
       }

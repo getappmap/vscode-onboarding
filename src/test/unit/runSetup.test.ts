@@ -22,6 +22,7 @@ const fail = (message: string): Command => `echo ${message}; exit 1`;
 function context(folder: string, options: {
   preApproved?: string[];
   secrets?: Record<string, string>;
+  /** Ask before each fix, giving this answer. Left out, fixes run without asking. */
   answer?: boolean;
   proven?: Map<string, string>;
   reprove?: boolean;
@@ -46,9 +47,9 @@ function context(folder: string, options: {
       }
       return values;
     },
-    async askToFix(entry, command) {
+    askToFix: options.answer === undefined ? undefined : async (entry, command) => {
       asked.push(`${entry.id}: ${command}`);
-      return options.answer ?? false;
+      return options.answer!;
     },
     reporter: {
       begin: entries => events.push(`begin ${entries.map(e => e.id).join(',')}`),
@@ -117,8 +118,17 @@ suite('runSetup: running entries', function () {
     assert.ok(!exists('fix-ran'));
   });
 
-  test('a fix the Org approved runs without asking', async () => {
-    const { ctx, asked, events } = context(folder, { preApproved: ['tool'] });
+  test('by default a fix runs without asking', async () => {
+    const { ctx, events } = context(folder);
+    const result = await runSetup([{ id: 'tool', title: 'The tool', check: fileExists('tool'), fix: touch('tool') }], ctx);
+
+    assert.deepStrictEqual(result, [{ id: 'tool', title: 'The tool', state: 'ready' }]);
+    assert.deepStrictEqual(events, ['begin tool', 'tool checking', 'tool fixing', 'tool checking', 'tool ready', 'end 1']);
+    assert.ok(exists('tool'));
+  });
+
+  test('a fix the Org approved runs without asking, even when asking is turned on', async () => {
+    const { ctx, asked, events } = context(folder, { preApproved: ['tool'], answer: false });
     const result = await runSetup([{ id: 'tool', title: 'The tool', check: fileExists('tool'), fix: touch('tool') }], ctx);
 
     assert.deepStrictEqual(result, [{ id: 'tool', title: 'The tool', state: 'ready' }]);
@@ -126,7 +136,7 @@ suite('runSetup: running entries', function () {
     assert.deepStrictEqual(events, ['begin tool', 'tool checking', 'tool fixing', 'tool checking', 'tool ready', 'end 1']);
   });
 
-  test('any other fix asks first, showing the exact command', async () => {
+  test('with asking turned on, any other fix asks first, showing the exact command', async () => {
     const { ctx, asked } = context(folder, { answer: true });
     const result = await runSetup([{ id: 'tool', check: fileExists('tool'), fix: touch('tool') }], ctx);
 
@@ -136,7 +146,7 @@ suite('runSetup: running entries', function () {
       : 'tool: touch tool']);
   });
 
-  test('a declined fix does not run, and what waits for it is skipped', async () => {
+  test('with asking turned on, a declined fix does not run, and what waits for it is skipped', async () => {
     const { ctx } = context(folder, { answer: false });
     const result = await runSetup([
       { id: 'tool', check: fileExists('tool'), fix: touch('tool'), failMessage: 'Install the tool.' },
@@ -152,6 +162,9 @@ suite('runSetup: running entries', function () {
 
   test('a fix that needs another team waits for their approval, without asking', async () => {
     const { ctx, asked } = context(folder, { answer: true });
+    const byDefault = context(folder);
+    assert.strictEqual((await runSetup([{ id: 'db', check: fileExists('db'), fix: touch('db'), needs: ['approval:dba'] }],
+      byDefault.ctx))[0].state, 'needs-approval', 'also when fixes run without asking');
     const result = await runSetup([
       { id: 'db', check: fileExists('db'), fix: touch('db'), needs: ['vpn', 'approval:dba'] },
       { id: 'app', check: 'exit 0', dependsOn: ['db'] },

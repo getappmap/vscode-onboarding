@@ -141,6 +141,11 @@
           "default": "",
           "scope": "machine",
           "description": "Command that prints one secret; {path} marks where its path goes."
+        },
+        "onboarding.askBeforeFixing": {
+          "type": "boolean",
+          "default": false,
+          "description": "Ask before running each fix, showing the exact command. When off, fixes run without asking, except those that need another team's approval."
         }
       }
     },

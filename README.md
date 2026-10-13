@@ -156,3 +156,4 @@ suites:
 |---|---|
 | `onboarding.orgSettingsUrl` | Company settings server for the Org and Team layers |
 | `onboarding.secretCommand` | Command that prints one secret; `{path}` marks where its path goes |
+| `onboarding.askBeforeFixing` | Off by default, so fixes run without asking. On, each fix shows its command and asks first. A fix that needs another team's approval always waits |

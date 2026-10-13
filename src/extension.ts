@@ -125,7 +125,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         (progress, token) => {
           report.attachProgress(progress);
           return runSetup(plan.entries, {
-            folder: folder.uri, preApproved, readSecrets, askToFix, reporter: allOf(report, recorder), token, proven, reprove,
+            folder: folder.uri, preApproved, readSecrets, reporter: allOf(report, recorder), token, proven, reprove,
+            askToFix: vscode.workspace.getConfiguration('onboarding').get('askBeforeFixing', false) ? askToFix : undefined,
           });
         });
       return statuses;
