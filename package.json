@@ -134,7 +134,7 @@
         "onboarding.orgSettingsUrl": {
           "type": "string",
           "default": "",
-          "description": "Company settings server for the Org and Team layers and the fixes approved in advance. Must use https, except on this computer. Leave empty to use each project's onboarding.yaml alone."
+          "description": "Company settings server for the Org and Team layers. Must use https, except on this computer. Leave empty to use each project's onboarding.yaml alone."
         },
         "onboarding.secretCommand": {
           "type": "string",
