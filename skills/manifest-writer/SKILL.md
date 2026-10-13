@@ -24,10 +24,23 @@ README ("install Node", "use a recent JDK") must not be copied into the manifest
    `mise.toml`, `.ruby-version`, `Brewfile`, `.devcontainer/`, the CI workflow's setup steps,
    and the `Dockerfile`. If one is there, use that tool.
 
-3. **If the repository does not decide, ask.** Ask the person you are drafting with which
-   tool the team uses, and give your recommendation. Record their answer with
-   `from: { source: person }`. If a small repository change would make the choice automatic,
-   suggest it, for example `volta pin node@20`, which writes the version into package.json.
+3. **If the repository does not decide, ask, then write the answer into the project.** Ask
+   the person you are drafting with which tool the team uses, and give your recommendation.
+   Then record their choice where the project's own people will see it. Use the first of
+   these that fits, and often the first two together:
+   1. A config file that makes the choice automatic, if the tool has one. For example
+      `volta pin node@20` writes the Node version into package.json, and rbenv reads
+      `.ruby-version`.
+   2. The project's existing setup instructions, usually a section of the README, in a line
+      or two of plain words: which tool, and the command to install it. Edit the section that
+      is already there; do not start a new document.
+   3. Only when neither fits, the manifest alone.
+
+   Show the person the exact change to their files before you make it. Then point the entry
+   at what you wrote, so the manifest and the documentation stay tied together:
+   `from: { source: person, file: README.md, section: "## Run locally", sha256: <SHA of that section>, date: <today> }`.
+   `source: person` means the extension never rewrites the value on its own; if that README
+   section changes later, the person editing it is told instead.
 
 4. **Prefer tools that switch versions per project.** A fix must not change what other
    projects on the computer use. Prefer a version manager that reads the project's own file,
