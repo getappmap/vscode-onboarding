@@ -97,7 +97,7 @@ suite('README check', () => {
     assert.strictEqual(fake.messages[0].message,
       'The README text behind a team choice in onboarding.yaml has changed: docker. Check the entry still matches.');
     assert.strictEqual(prompts[0], updatePrompt([entries[1]]));
-    assert.match(prompts[0], /^\/text-reader /);
+    assert.match(prompts[0], /^\/onboarding-text-reader /);
     assert.match(prompts[0], /- docker: README\.md "## Run in Docker" \(a person's choice\)/);
     assert.match(prompts[0], /For a person's choice, change nothing/);
   });

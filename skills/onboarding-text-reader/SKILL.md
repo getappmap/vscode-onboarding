@@ -1,5 +1,5 @@
 ---
-name: text-reader
+name: onboarding-text-reader
 description: Read one README section, pull out setup values, and record the section and its SHA for each. Use while drafting onboarding.yaml, and when a section behind a guessed value has changed.
 ---
 Some values in `onboarding.yaml` come from the project's README. Each one records where it came

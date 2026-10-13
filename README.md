@@ -170,9 +170,9 @@ the extension is installed, or in the window F5 opens.
 
 | Name | Kind | Use |
 |---|---|---|
-| `/manifest-writer` | Skill | Draft or change `onboarding.yaml` |
-| `/text-reader` | Skill | Read setup values from a README section; update them when it changes |
-| `/troubleshooter` | Skill | Explain and fix entries that are not ready (Ask Copilot to Help) |
+| `/onboarding-manifest-writer` | Skill | Draft or change `onboarding.yaml` |
+| `/onboarding-text-reader` | Skill | Read setup values from a README section; update them when it changes |
+| `/onboarding-troubleshooter` | Skill | Explain and fix entries that are not ready (Ask Copilot to Help) |
 | `#checkSetup` | Tool | Run check commands, never fixes. Entries that need secrets are not checked |
 | `#sectionSha` | Tool | The SHA of a README section, the same as the README check computes |
 

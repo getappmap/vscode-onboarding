@@ -78,7 +78,7 @@
       {
         "view": "onboarding.report",
         "when": "onboarding.viewState == loading || !onboarding.viewState",
-        "contents": "Reading onboarding.yaml…"
+        "contents": "Reading onboarding.yaml\u2026"
       },
       {
         "view": "onboarding.report",
@@ -199,13 +199,13 @@
     ],
     "chatSkills": [
       {
-        "path": "./skills/manifest-writer/SKILL.md"
+        "path": "./skills/onboarding-manifest-writer/SKILL.md"
       },
       {
-        "path": "./skills/text-reader/SKILL.md"
+        "path": "./skills/onboarding-text-reader/SKILL.md"
       },
       {
-        "path": "./skills/troubleshooter/SKILL.md"
+        "path": "./skills/onboarding-troubleshooter/SKILL.md"
       }
     ]
   },

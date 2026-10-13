@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { Entry, MANIFEST_FILE } from './manifest';
 import { isStale } from './sectionSha';
+import { SKILLS } from '../agent/prompts';
 
 export const UPDATE_ENTRIES = 'Update Entries';
 
@@ -29,12 +30,12 @@ export async function findStale(entries: Entry[], folder: vscode.Uri): Promise<E
   return stale;
 }
 
-/** The prompt for the text-reader skill: which values to read again, and which only to compare. */
+/** The prompt for the onboarding-text-reader skill: which values to read again, and which only to compare. */
 export function updatePrompt(stale: Entry[]): string {
   const lines = stale.map(e =>
     `- ${e.id}: ${e.from!.file} "${e.from!.section}" (${e.from!.source === 'person' ? 'a person\'s choice' : e.from!.source})`);
   return [
-    `/text-reader The text behind these ${MANIFEST_FILE} entries has changed since it was recorded:`,
+    `/${SKILLS.textReader} The text behind these ${MANIFEST_FILE} entries has changed since it was recorded:`,
     ...lines,
     '',
     'Read each section again. Update guessed values and their SHA. For a person\'s choice, change nothing:',

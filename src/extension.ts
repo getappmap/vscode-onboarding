@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { getAgentHost } from './agent/agentHost';
-import { troubleshootPrompt } from './agent/prompts';
+import { SKILLS, troubleshootPrompt } from './agent/prompts';
 import { Entry, MANIFEST_FILE, Manifest, combineLayers, readManifest } from './manifest/manifest';
 import { ManifestMcpProvider, PROVIDER_ID } from './connections/mcpServers';
 import { EntryStatus, SetupReport, allOf, rowsBeforeRun } from './report/report';
@@ -177,7 +177,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.commands.registerCommand('onboarding.askCopilotAboutEntry', (status: EntryStatus) => askCopilot([status])),
     vscode.commands.registerCommand('onboarding.showLog', () => log.show()),
     vscode.commands.registerCommand('onboarding.draftManifest', () =>
-      getAgentHost().openChat('/manifest-writer Draft onboarding.yaml for this repository.')),
+      getAgentHost().openChat(`/${SKILLS.manifestWriter} Draft onboarding.yaml for this repository.`)),
   );
 
   if (folder) {

@@ -1,5 +1,5 @@
 ---
-name: troubleshooter
+name: onboarding-troubleshooter
 description: Explain a failed setup entry in plain words and find the fix. Use after onboarding setup reports entries that are not ready.
 ---
 The Onboarding extension sets up this computer from `onboarding.yaml`. The developer asked for

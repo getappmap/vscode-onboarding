@@ -1,5 +1,5 @@
 ---
-name: manifest-writer
+name: onboarding-manifest-writer
 description: Draft or extend onboarding.yaml by reading the repository. Use when a repository has no onboarding.yaml, or when asked to add or change a setup entry.
 ---
 `onboarding.yaml` lists what a developer's computer needs to work on this repository. The
@@ -23,7 +23,7 @@ entries:
     env: { NAME: value }            # plain values for the commands
     secrets: { NAME: dev/path }     # secret store paths, never values
     failMessage: <one specific next step>
-    troubleshooting: <notes for the troubleshooter>
+    troubleshooting: <notes for the onboarding-troubleshooter skill>
     from: { source: guessed, file: README.md, section: "## Run locally", sha256: <8 hex>, date: <YYYY-MM-DD> }
 mcpServers:
   - { name: access, url: "https://...", tokenSecret: dev/path }   # or command: [program, args]
