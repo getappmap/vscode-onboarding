@@ -6,6 +6,15 @@ import { PRESET_NAMES } from '../setup/presets';
  *  Give both forms when they differ. */
 export type Command = string | { windows?: string; posix?: string };
 
+/** The kinds of computer an entry can be limited to. */
+export type Platform = 'macos' | 'linux' | 'windows';
+export const PLATFORMS: Platform[] = ['macos', 'linux', 'windows'];
+
+/** The kind of computer this is, in the words the manifest uses. */
+export function currentPlatform(platform: NodeJS.Platform = process.platform): Platform {
+  return platform === 'win32' ? 'windows' : platform === 'darwin' ? 'macos' : 'linux';
+}
+
 /** Where a value came from. Decides whether the extension may change it. */
 export interface Provenance {
   source: 'person' | 'reference' | 'guessed' | 'confirmed';
@@ -25,6 +34,7 @@ export interface Entry {
   fix?: Command;                     // puts it in place
   prove?: Command;                   // succeeds when it works
   dependsOn?: string[];
+  platforms?: Platform[];            // runs only on these; left out, runs on every computer
   env?: Record<string, string>;      // plain values passed to the commands
   secrets?: Record<string, string>;  // ENV_NAME -> secret store path, never a value
   failMessage?: string;
@@ -104,7 +114,7 @@ export function validateManifest(data: unknown, source = MANIFEST_FILE): Manifes
   return compact({ team: v.text(data.team, 'team'), entries, mcpServers });
 }
 
-const ENTRY_KEYS = ['id', 'title', 'uses', 'with', 'check', 'fix', 'prove', 'dependsOn', 'env',
+const ENTRY_KEYS = ['id', 'title', 'uses', 'with', 'check', 'fix', 'prove', 'dependsOn', 'platforms', 'env',
   'secrets', 'failMessage', 'troubleshooting', 'from'];
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
@@ -134,6 +144,7 @@ function readEntry(data: unknown, path: string, v: Validator): Entry {
     fix: v.command(data.fix, `${at}.fix`),
     prove: v.command(data.prove, `${at}.prove`),
     dependsOn: v.textList(data.dependsOn, `${at}.dependsOn`),
+    platforms: v.textList(data.platforms, `${at}.platforms`) as Platform[] | undefined,
     env: v.textMap(data.env, `${at}.env`, ENV_NAME_PATTERN),
     secrets: v.textMap(data.secrets, `${at}.secrets`, ENV_NAME_PATTERN),
     failMessage: v.text(data.failMessage, `${at}.failMessage`),
@@ -152,6 +163,14 @@ function readEntry(data: unknown, path: string, v: Validator): Entry {
   }
   if (entry.dependsOn?.includes(id)) {
     v.problem(`${at}.dependsOn`, 'an entry cannot depend on itself');
+  }
+  for (const platform of entry.platforms ?? []) {
+    if (!PLATFORMS.includes(platform)) {
+      v.problem(`${at}.platforms`, `"${platform}" is not a platform. Platforms: ${PLATFORMS.join(', ')}`);
+    }
+  }
+  if (entry.platforms?.length === 0) {
+    v.problem(`${at}.platforms`, 'must name at least one platform');
   }
   for (const name of Object.keys(entry.env ?? {})) {
     if (entry.secrets && name in entry.secrets) {
@@ -338,6 +357,21 @@ export function combineLayers(layers: Manifest[]): Manifest {
     }
   }
   return compact({ team, entries: [...entries.values()], mcpServers: [...servers.values()] });
+}
+
+/**
+ * The plan for one kind of computer. Leaves out entries limited to other platforms, and
+ * drops them from dependsOn, since there is nothing to wait for. Inputs are not changed.
+ */
+export function forPlatform(manifest: Manifest, platform: Platform = currentPlatform()): Manifest {
+  const left = manifest.entries.filter(e => e.platforms && !e.platforms.includes(platform)).map(e => e.id);
+  if (left.length === 0) {
+    return manifest;
+  }
+  const entries = manifest.entries
+    .filter(e => !left.includes(e.id))
+    .map(e => e.dependsOn ? { ...e, dependsOn: e.dependsOn.filter(id => !left.includes(id)) } : e);
+  return { ...manifest, entries };
 }
 
 function mergeEntry(earlier: Entry, later: Entry): Entry {

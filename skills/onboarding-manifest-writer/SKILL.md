@@ -19,6 +19,7 @@ entries:
     fix: <command>                  # puts it in place; runs without asking
     prove: <command>                # passes when it works, such as a build or a request
     dependsOn: [other-id]           # run after these; skipped if they are not ready
+    platforms: [macos, linux]       # optional: runs only on these; left out, runs everywhere
     env: { NAME: value }            # plain values for the commands
     secrets: { NAME: dev/path }     # secret store paths, never values
     failMessage: <one specific next step>
@@ -29,8 +30,45 @@ mcpServers:
 ```
 
 A command is one string, run with `sh -c` on macOS and Linux and PowerShell on Windows. When the
-two differ, write `{ posix: ..., windows: ... }`. If the project supports only macOS and Linux,
-give only `posix` forms and say so in a comment at the top of the file.
+two differ, write `{ posix: ..., windows: ... }`. An entry with `platforms` is left out of the plan
+on other computers, and entries that depend on it do not wait for it there.
+
+## Every entry works on every platform, or says where it runs
+
+Each entry must be one of these:
+
+| Kind | How to write it | Example |
+|---|---|---|
+| Same command everywhere | one string that runs the same in sh and PowerShell, such as a `node`, `git`, `bundle` or `yarn` command | `check: bundle check` |
+| Different per platform | `{ posix: ..., windows: ... }`, each a short command or a helper script | `fix: { posix: sh bin/onboarding/ruby.sh, windows: ... }` |
+| Only some platforms | `platforms: [...]`, with commands for just those | `platforms: [macos]` and `fix: brew install cmake` |
+
+An entry without `platforms` runs on every computer. If it has only a `posix` form, it fails on
+Windows with "no command for this computer", and the other way round. Use `platforms` only for
+a step that is not needed at all elsewhere, such as a Homebrew install that only macOS needs.
+Never test `uname` inside a command to pick the platform; split the entry, or use `platforms`.
+
+If the project supports only some platforms, say which in a comment at the top of the file.
+
+## Keep commands short: put scripts in bin/onboarding/
+
+A command in the manifest should fit on one or two lines. When a check or fix needs more, such as
+a `case`, a loop, or several steps, put it in a helper script in the project's
+`bin/onboarding/` folder and have the command run it. A script is easier to read, test and
+review than YAML. Use `bin/onboarding/`, not `bin/setup/`: Rails and many other projects
+already have a `bin/setup` file.
+
+- Name the script after the entry: `bin/onboarding/<entry-id>.sh` for sh,
+  `bin/onboarding/<entry-id>.ps1` for PowerShell, or `bin/onboarding/<entry-id>.js` for Node,
+  which runs the same on every platform once Node is set up (depend on the `node` entry).
+- Run it with the interpreter, so it works without the execute bit and with any execution
+  policy: `sh bin/onboarding/x.sh`, `node bin/onboarding/x.js`, and on Windows
+  `powershell -NoProfile -ExecutionPolicy Bypass -File bin\onboarding\x.ps1`.
+- One script may do both jobs: `sh bin/onboarding/x.sh check` and `sh bin/onboarding/x.sh fix`.
+- Start each script with a comment saying what it sets up and why, and keep the reasoning there
+  rather than in a long YAML comment. Make it stop at the first error (`set -eu` in sh).
+- If the project already has a setup script, such as `bin/setup`, call the part of it you need
+  rather than copying its steps.
 
 ## Steps
 

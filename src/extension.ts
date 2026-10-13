@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { getAgentHost } from './agent/agentHost';
 import { SKILLS, troubleshootPrompt } from './agent/prompts';
-import { Entry, MANIFEST_FILE, Manifest, combineLayers, readManifest } from './manifest/manifest';
+import { Entry, MANIFEST_FILE, Manifest, combineLayers, forPlatform, readManifest } from './manifest/manifest';
 import { ManifestMcpProvider, PROVIDER_ID } from './connections/mcpServers';
 import { EntryStatus, SetupReport, allOf, rowsBeforeRun } from './report/report';
 import { STATUS_DIR, STATUS_FILE, StatusRecorder, emptyStatus, provenFrom, readStatus } from './report/statusFile';
@@ -84,7 +84,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       log.warn(`Org and Team settings not loaded, so only ${MANIFEST_FILE} is used: ${(err as Error).message}`);
     }
 
-    plan = combineLayers(project ? [...layers, project] : layers);
+    plan = forPlatform(combineLayers(project ? [...layers, project] : layers));
     mcp.update(plan.mcpServers);
     await showLastResults();
     await setViewState(invalid ? 'invalid' : plan.entries.length === 0 ? 'empty' : 'ready');

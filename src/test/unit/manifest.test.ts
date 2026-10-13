@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
-  Manifest, ManifestError, combineLayers, parseManifest, readManifest, validateManifest,
+  Manifest, ManifestError, combineLayers, currentPlatform, forPlatform, parseManifest, readManifest, validateManifest,
 } from '../../manifest/manifest';
 
 /** Runs fn and returns the ManifestError it throws. */
@@ -177,6 +177,35 @@ suite('Manifest: problems', () => {
     }
   });
 
+  test('reports a bad platforms list', () => {
+    const problems = problemsOf(() => parseManifest([
+      'entries:',
+      '  - id: bad-platform',
+      '    platforms: [darwin]',
+      '    check: "true"',
+      '  - id: no-platforms',
+      '    platforms: []',
+      '    check: "true"',
+    ].join('\n')));
+    assertProblem(problems, 'entries[0] (bad-platform).platforms: "darwin" is not a platform');
+    assertProblem(problems, 'entries[1] (no-platforms).platforms: must name at least one platform');
+  });
+
+  test('reads platforms; a command may have one form, with or without them', () => {
+    const manifest = parseManifest([
+      'entries:',
+      '  - id: posix-only',
+      '    check: { posix: "true" }',
+      '  - id: login-shell',
+      '    platforms: [macos, linux]',
+      '    check: { posix: "sh bin/setup/login-shell.sh --check" }',
+      '  - id: winget',
+      '    platforms: [windows]',
+      '    check: { windows: "winget --version" }',
+    ].join('\n'));
+    assert.deepStrictEqual(manifest.entries.map(e => e.platforms), [undefined, ['macos', 'linux'], ['windows']]);
+  });
+
   test('checks data from the Org settings server the same way', () => {
     assertProblem(problemsOf(() => validateManifest({ entries: [{ id: 'x', check: 42 }] }, 'Org layer')),
       'must be a command');
@@ -244,5 +273,34 @@ suite('Manifest: combining layers', () => {
 
   test('no layers gives an empty plan', () => {
     assert.deepStrictEqual(combineLayers([]), { entries: [], mcpServers: [] });
+  });
+});
+
+suite('Manifest: the plan for this computer', () => {
+  const manifest: Manifest = {
+    entries: [
+      { id: 'brew', platforms: ['macos'], check: 'true' },
+      { id: 'node', check: 'true', dependsOn: ['brew'] },
+      { id: 'winget', platforms: ['windows'], check: 'true' },
+      { id: 'app', check: 'true', dependsOn: ['node', 'winget'] },
+    ],
+    mcpServers: [],
+  };
+
+  test('leaves out entries for other platforms, and stops waiting for them', () => {
+    const plan = forPlatform(manifest, 'linux');
+    assert.deepStrictEqual(plan.entries.map(e => [e.id, e.dependsOn]),
+      [['node', []], ['app', ['node']]]);
+  });
+
+  test('keeps entries limited to this platform', () => {
+    assert.deepStrictEqual(forPlatform(manifest, 'macos').entries.map(e => e.id), ['brew', 'node', 'app']);
+    assert.deepStrictEqual(manifest.entries[3].dependsOn, ['node', 'winget'], 'input not changed');
+  });
+
+  test('names this computer the way the manifest does', () => {
+    assert.strictEqual(currentPlatform('darwin'), 'macos');
+    assert.strictEqual(currentPlatform('win32'), 'windows');
+    assert.strictEqual(currentPlatform('linux'), 'linux');
   });
 });

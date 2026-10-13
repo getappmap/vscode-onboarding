@@ -2,7 +2,7 @@ import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 import { parse, stringify } from 'yaml';
-import type { Entry } from '../manifest/manifest';
+import { Entry, Platform, currentPlatform } from '../manifest/manifest';
 import type { Because, EntryState, EntryStatus, SetupReporter } from './report';
 
 /**
@@ -27,7 +27,7 @@ export interface Status {
   run_started?: string;
   run_finished?: string | null;   // null while a run is going
   machine: string;
-  platform: 'windows' | 'macos' | 'linux';
+  platform: Platform;
   entries: Record<string, EntryRecord>;
 }
 
@@ -58,11 +58,7 @@ export async function writeStatus(folder: string, status: Status): Promise<void>
 }
 
 export function emptyStatus(): Status {
-  return { machine: os.hostname(), platform: platformName(), entries: {} };
-}
-
-function platformName(): Status['platform'] {
-  return process.platform === 'win32' ? 'windows' : process.platform === 'darwin' ? 'macos' : 'linux';
+  return { machine: os.hostname(), platform: currentPlatform(), entries: {} };
 }
 
 /** The entry id -> definition hash of entries proven on this computer, as runSetup takes it. */
@@ -93,7 +89,7 @@ export class StatusRecorder implements SetupReporter {
       run_started: this.now().toISOString(),
       run_finished: null,
       machine: os.hostname(),
-      platform: platformName(),
+      platform: currentPlatform(),
       entries: Object.fromEntries(entries.map(e => [e.id, {
         ...previous[e.id],
         title: e.title ?? e.id,
