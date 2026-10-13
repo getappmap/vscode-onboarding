@@ -6,10 +6,10 @@ import { fake } from './vscode.fake';
 suite('Copilot: opening the chat', () => {
   setup(() => fake.reset());
 
-  test('opens agent mode with the prompt typed in but not sent', async () => {
+  test('starts a new session in agent mode, with the prompt typed in but not sent', async () => {
     await new CopilotAgentHost().openChat('/troubleshooter help');
-    assert.deepStrictEqual(fake.executed, ['workbench.action.chat.open']);
-    assert.deepStrictEqual(fake.executedArgs[0], [{ query: '/troubleshooter help', isPartialQuery: true, mode: 'agent' }]);
+    assert.deepStrictEqual(fake.executed, ['workbench.action.chat.newChat', 'workbench.action.chat.open']);
+    assert.deepStrictEqual(fake.executedArgs[1], [{ query: '/troubleshooter help', isPartialQuery: true, mode: 'agent' }]);
   });
 
   test('says so when Copilot Chat cannot be opened', async () => {

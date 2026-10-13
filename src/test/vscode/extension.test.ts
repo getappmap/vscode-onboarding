@@ -22,4 +22,12 @@ suite('Extension', () => {
     assert.ok((await vscode.commands.getCommands(true)).includes(open), 'no Activity Bar container');
     await vscode.commands.executeCommand(open);
   });
+
+  test('the chat commands Copilot help relies on exist', async () => {
+    // Built-in commands, not a stable API: this catches a VS Code release that renames them.
+    const commands = await vscode.commands.getCommands(true);
+    for (const id of ['workbench.action.chat.newChat', 'workbench.action.chat.open']) {
+      assert.ok(commands.includes(id), `${id} is missing`);
+    }
+  });
 });
