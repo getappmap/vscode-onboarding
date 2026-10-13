@@ -5,6 +5,7 @@ import { Entry, MANIFEST_FILE, Manifest, combineLayers, readManifest } from './m
 import { ManifestMcpProvider, PROVIDER_ID } from './connections/mcpServers';
 import { EntryStatus, SetupReport, allOf, rowsBeforeRun } from './report/report';
 import { STATUS_DIR, STATUS_FILE, StatusRecorder, emptyStatus, provenFrom, readStatus } from './report/statusFile';
+import { findStale, notifyStale } from './manifest/staleCheck';
 import { runSetup } from './setup/runSetup';
 import { CheckEntriesTool } from './tools/checkEntriesTool';
 import { fetchOrgSettings, readSecret } from './company/company';
@@ -28,6 +29,19 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   let running = false;
 
   const mcp = new ManifestMcpProvider(readSecret, folder?.uri);
+  const staleShown = new Set<string>();
+
+  /** Warns, once per change, when the README text behind an entry has changed. */
+  const checkReadme = async () => {
+    if (!folder) {
+      return;
+    }
+    try {
+      await notifyStale(await findStale(plan.entries, folder.uri), prompt => getAgentHost().openChat(prompt), staleShown);
+    } catch (err) {
+      log.warn(`Could not check the README text behind ${MANIFEST_FILE}: ${(err as Error).message}`);
+    }
+  };
 
   /** Shows the last results from the status file. Skipped while setup runs, since it shows live results then. */
   const showLastResults = async () => {
@@ -65,7 +79,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     mcp.update(plan.mcpServers);
     await showLastResults();
     await setViewState(invalid ? 'invalid' : plan.entries.length === 0 ? 'empty' : 'ready');
-    // TODO: warn about guessed values whose README text changed (findStale, notifyStale).
+    void checkReadme();
   };
 
   const readSecrets = async (paths: Record<string, string>) => {
@@ -169,7 +183,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     const onChange = () => void reload();
     context.subscriptions.push(watcher, watcher.onDidChange(onChange), watcher.onDidCreate(onChange),
       watcher.onDidDelete(onChange));
-    // TODO: also watch **/*.md for the README check.
+    const readmeWatcher = vscode.workspace.createFileSystemWatcher(new vscode.RelativePattern(folder, '**/*.md'));
+    const onReadmeChange = () => void checkReadme();
+    context.subscriptions.push(readmeWatcher, readmeWatcher.onDidChange(onReadmeChange),
+      readmeWatcher.onDidCreate(onReadmeChange), readmeWatcher.onDidDelete(onReadmeChange));
 
     // Another window, or a person, may change the results.
     const statusWatcher = vscode.workspace.createFileSystemWatcher(
