@@ -1,0 +1,141 @@
+meta:
+  title: Setting up appmap-java with Onboarding
+  description: How an AI agent wrote the setup steps for appmap-java, and how the Onboarding panel runs them.
+  loop: false
+  notes: Cut from a 16-minute screen recording made on 2026-10-13 (no audio). The full recording is not committed; only the stills and two short clips are. The recording ends while the Oracle step is still pulling its image; the final all-ready screenshot was sent separately.
+
+scenes:
+  - id: intro
+    theme: statement
+    title: Setting up appmap-java, step by step
+    captions:
+      - text: Here's how appmap-java got its developer setup, written by a human + AI agent team and run by the Onboarding extension for VS Code.
+    media:
+      kind: image
+      asset: all-ready
+      alt: "The finished setup: all fourteen Onboarding steps Ready."
+      frame: full
+      fit: cover
+      motion: zoom-in
+
+  - id: how-it-works
+    theme: console
+    title: What Onboarding is
+    captions:
+      - text: Onboarding reads one file in the repo, called onboarding.yaml.
+      - text: It lists every setup step. Each step has a check, and a fix.
+      - text: The panel runs each check. If it fails, it runs the fix, then checks again.
+      - text: When the check passes, the step is marked Ready.
+    media: { kind: graphic, graphic: how-it-works, alt: "Diagram: onboarding.yaml lists steps; each step's check runs, a failing check runs its fix, and a passing check marks the step Ready." }
+
+  - id: empty-panel
+    theme: console
+    title: Start with Draft Manifest
+    captions:
+      - text: At first the repo has no onboarding.yaml, so the panel has nothing to set up.
+      - text: Clicking "Draft Manifest" starts an agent with the /onboarding-manifest-writer skill.
+    media: { kind: image, asset: empty-panel, alt: "The empty Onboarding panel with a Draft Manifest button, and the chat starting /onboarding-manifest-writer.", motion: still }
+
+  - id: agent-question
+    theme: console
+    title: The agent asks what it can't tell
+    captions:
+      - text: The agent reads the README, the CI workflows and the build files.
+      - text: When the repo doesn't say something, it asks. Here, how should developers install Java 21?
+      - text: It recommends mise, which reads a mise.toml file in the repo. We pick mise.
+    media: { kind: image, asset: agent-question, alt: "The agent asks which tool developers should use to get JDK 21, recommending mise.", motion: still }
+
+  - id: manifest-drafted
+    theme: console
+    title: Nine setup steps
+    captions:
+      - text: A few minutes later, onboarding.yaml lists nine steps.
+      - text: mise, Java 21, Gradle, bats and its libraries, sbt, the jars, and the sample apps for the tests.
+      - text: The agent also adds small helper scripts, and updates the README to match.
+    media: { kind: image, asset: manifest-drafted, alt: "The Onboarding panel lists nine steps, all Not checked yet; the chat summarizes the files the agent changed.", motion: still }
+
+  - id: step-detail
+    theme: console
+    title: Inside one step
+    captions:
+      - text: The developer can click a step to see how it works.
+      - text: The check is a command that passes when the tool is in place. The fix installs that tool if it's missing.
+      - text: If it fails, Copilot can troubleshoot. Notes in the onboarding file hold tips for making the repair.
+    media: { kind: image, asset: step-detail, alt: "The detail page for the mise step: its check and fix commands, what to do if it fails, and notes from the team.", motion: still }
+
+  - id: first-run
+    theme: console
+    title: Run setup
+    durationMs: 28000
+    captions:
+      - text: Now we run the setup.
+        durationMs: 5000
+      - text: The onboarding tool works down the list, one step at a time.
+        durationMs: 6000
+      - text: Each step is checked first. Only the ones that fail get fixed.
+        durationMs: 7000
+      - text: The Output panel shows every command and its result.
+        durationMs: 6000
+      - text: About twenty seconds later, all nine steps are Ready.
+        durationMs: 4000
+    media: { kind: video, asset: clip-first-run, alt: "The setup runs through all nine steps until each one shows Ready." }
+
+  - id: ask-podman
+    theme: console
+    title: Ask for more
+    captions:
+      - text: The agent had left out the Oracle database tests. So we ask it to include those.
+      - text: And one twist. Run the database with Podman instead of Docker.
+    media: { kind: image, asset: ask-podman, alt: "The chat shows the two requests: set up everything needed to run the project, and use Podman instead of Docker.", motion: still }
+
+  - id: fourteen-steps
+    theme: console
+    title: Fourteen steps now
+    captions:
+      - text: The manifest grows to fourteen steps.
+      - text: The new ones are jq, Node, Podman, a running Podman machine, and the Oracle test database.
+      - text: They show Not checked yet. The old steps stay Ready.
+    media: { kind: image, asset: fourteen-steps, alt: "The Onboarding panel lists fourteen steps; the five new ones show Not checked yet.", motion: still }
+
+  - id: second-run
+    theme: console
+    title: Run setup again
+    durationMs: 21000
+    captions:
+      - text: We run the setup again.
+      - text: The steps that were already Ready pass their checks in a moment.
+      - text: The new steps get fixed, one by one, until it reaches the Oracle database.
+    media: { kind: video, asset: clip-second-run, alt: "The second setup run passes the old steps quickly and starts fixing the new ones." }
+
+  - id: oracle-step
+    theme: console
+    title: The Oracle database starts
+    captions:
+      - text: The Oracle step pulls a large container image, then waits for the database to accept connections.
+      - text: The notes from the team warn that the first start can take several minutes.
+      - text: The agent also warns that this Podman machine has only 2 GB of memory. Oracle needs about that much.
+    media: { kind: image, asset: oracle-step, alt: "The Oracle step is fixing: the Output panel shows the image being copied and 'Waiting for Oracle to accept connections'.", motion: still }
+  - id: troubleshoot
+    theme: console
+    title: When a step fails, an agent troubleshoots
+    note: Screenshot sent by the user after the recording ended.
+    captions:
+      - text: That warning was right. Oracle ran out of memory and crashed on its first start.
+      - text: When a step can't finish, Onboarding hands it to another agent, the onboarding troubleshooter.
+      - text: It gives the Podman machine 4 GB, rebuilds the container, and runs the fix again.
+      - text: Then it writes what it learned into the notes in onboarding.yaml, for the next person.
+      - text: All fourteen steps are now Ready.
+    media:
+      kind: image
+      asset: all-ready
+      alt: All fourteen steps show Ready. The chat shows the onboarding-troubleshooter agent's summary of how it fixed the Oracle step.
+      motion: still
+
+  - id: outro
+    theme: statement
+    title: Setup is now part of the repo
+    support: "Committed: onboarding.yaml, mise.toml and bin/onboarding/"
+    captions:
+      - text: All of this is now committed with the code.
+      - text: The next developer just opens the repo, and runs setup.
+    media: { kind: none }

@@ -16,5 +16,7 @@
         // "noImplicitReturns": true, /* Report error when not all code paths in function return a value. */
         // "noFallthroughCasesInSwitch": true, /* Report errors for fallthrough cases in switch statement. */
         // "noUnusedParameters": true,  /* Report errors on unused parameters. */
-    }
+    },
+    // Only the extension's own code. showcases/ holds Showcase Studio's TSX diagrams, which the studio compiles itself.
+    "include": ["src"]
 }
