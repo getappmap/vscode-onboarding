@@ -30,7 +30,7 @@ suite('Status view: the pages', () => {
     assert.match(html, /data-command="runSetup"/);
   });
 
-  test('the entry page shows what happened, what to do, the notes and its links', () => {
+  test('a failed entry leads with what happened and what to do, then how it works', () => {
     const html = renderPage({
       kind: 'entry',
       details: { status: jdkFailed, entry: jdk, inProjectManifest: true, dependsOn: [] },
@@ -38,8 +38,9 @@ suite('Status view: the pages', () => {
     assert.strictEqual(visibleText(html), [
       '← All entries ✕ Java 21 Failed',
       'What happened java: command not found',
-      'What to do Install JDK 21 with `brew install temurin@21`.',
-      'Notes from the team Run `which -a java`.',
+      'What to do Install JDK 21 with brew install temurin@21 .',
+      'Notes from the team Run which -a java .',
+      'How it works Check passes when it is in place java -version',
       'Open in onboarding.yaml Ask Copilot to Help',
     ].join(' '));
     assert.match(html, /data-command="list"/);
@@ -53,9 +54,47 @@ suite('Status view: the pages', () => {
       kind: 'entry', details: { status: ready, entry: jdk, inProjectManifest: false, dependsOn: [] },
     }, 'csp', 'n0nce');
     assert.match(visibleText(html), /This entry comes from the Org or Team settings, not onboarding\.yaml\./);
-    assert.match(visibleText(html), /Last proven on this computer: /);
+    assert.match(visibleText(html), /^← All entries ✓ Java 21 Ready · proven \S/);
     assert.doesNotMatch(html, /openManifest/);
     assert.doesNotMatch(html, /askCopilot/, 'a ready entry needs no help');
+  });
+
+  test('a ready entry leads with how it works; its fail message reads as what to do if it fails', () => {
+    const ready: EntryStatus = { id: 'jdk', title: 'Java 21', state: 'ready', detail: 'Proven earlier.' };
+    const text = visibleText(renderPage({
+      kind: 'entry', details: { status: ready, entry: jdk, inProjectManifest: true, dependsOn: [] },
+    }, 'csp', 'n0nce'));
+    assert.strictEqual(text, [
+      '← All entries ✓ Java 21 Ready',
+      'How it works Check passes when it is in place java -version',
+      'If it fails Install JDK 21 with brew install temurin@21 .',
+      'Notes from the team Run which -a java .',
+      'Open in onboarding.yaml',
+    ].join(' '));
+  });
+
+  test('how it works names the preset and shows its commands for this computer', () => {
+    const entry: Entry = {
+      id: 'tool', uses: 'jdk', with: { version: '21' },
+      fix: { windows: 'winget install tool' }, prove: { posix: 'tool --works', windows: 'tool.exe --works' },
+    };
+    const status: EntryStatus = { id: 'tool', title: 'tool', state: 'unchecked' };
+    const html = renderPage({ kind: 'entry', details: { status, entry, inProjectManifest: true, dependsOn: [] } }, 'csp', 'n0nce');
+    const text = visibleText(html);
+    assert.match(text, /How it works Uses the jdk preset \(version 21\)\. Check passes when it is in place .*java/);
+    assert.match(text, process.platform === 'win32' ? /Fix puts it in place winget install tool/
+      : /Fix puts it in place No command for this computer\./);
+    assert.match(text, process.platform === 'win32' ? /Prove passes when it works tool\.exe --works/
+      : /Prove passes when it works tool --works/);
+  });
+
+  test('text people wrote keeps its paragraphs and line breaks, and shows `backticks` as code', () => {
+    const entry: Entry = { id: 'x', check: 'true', troubleshooting: 'Open a new terminal.\nThen run `volta setup`.\n\nStill broken? Ask.\n' };
+    const html = renderPage({
+      kind: 'entry',
+      details: { status: { id: 'x', title: 'x', state: 'ready' }, entry, inProjectManifest: true, dependsOn: [] },
+    }, 'csp', 'n0nce');
+    assert.match(html, /<p>Open a new terminal\.<br>Then run <code>volta setup<\/code>\.<\/p>\n<p>Still broken\? Ask\.<\/p>/);
   });
 
   test('each entry it depends on links to its page; an unknown one says so', () => {

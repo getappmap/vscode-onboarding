@@ -1,4 +1,6 @@
-import type { Entry } from '../manifest/manifest';
+import type { Command, Entry } from '../manifest/manifest';
+import { commandFor } from '../setup/runCommand';
+import { expandPreset } from '../setup/presets';
 import { EntryState, EntryStatus, PROBLEMS, stateText } from './report';
 
 /** What the status view's page asks the extension to do. */
@@ -70,39 +72,85 @@ ${statuses.length > 0 ? `<ul class="entries">${rows.join('\n')}</ul>` : '<p>Ther
 }
 
 function entryBody({ status, entry, inProjectManifest, dependsOn }: EntryDetails): string {
-  const parts = [
-    '<nav><a href="#" data-command="list">← All entries</a></nav>',
-    `<header><h1>${mark(status.state)}${escape(status.title)}</h1><span class="state">${escape(stateText(status))}</span></header>`,
-  ];
-  if (status.detail) {
-    parts.push(`<h2>What happened</h2><pre>${escape(status.detail)}</pre>`);
-  }
-  if (entry?.failMessage) {
-    parts.push(`<h2>What to do</h2><p>${escape(entry.failMessage)}</p>`);
-  }
-  if (entry?.troubleshooting) {
-    parts.push(`<h2>Notes from the team</h2><pre class="notes">${escape(entry.troubleshooting)}</pre>`);
-  }
-  if (status.provenAt) {
-    const when = new Date(status.provenAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-    parts.push(`<p>Last proven on this computer: ${escape(when)}.</p>`);
-  }
-  if (dependsOn.length > 0) {
-    const items = dependsOn.map(({ id, status: dep }) => dep
-      ? `<li><a href="#" data-command="entry" data-id="${escape(id)}">${mark(dep.state)}`
-        + `<span class="title">${escape(dep.title)}</span><span class="state">${escape(stateText(dep))}</span></a></li>`
-      : `<li><span class="row"><span class="mark"></span>${escape(id)}<span class="state">is not in the setup plan</span></span></li>`);
-    parts.push(`<h2>Depends on</h2><ul class="entries">${items.join('\n')}</ul>`);
-  }
+  const problem = PROBLEMS.includes(status.state);
+  const sections = {
+    happened: status.detail && problem ? `<h2>What happened</h2><pre>${escape(status.detail)}</pre>` : '',
+    todo: entry?.failMessage ? `<h2>${problem ? 'What to do' : 'If it fails'}</h2>${prose(entry.failMessage)}` : '',
+    notes: entry?.troubleshooting ? `<h2>Notes from the team</h2>${prose(entry.troubleshooting)}` : '',
+    how: entry ? howItWorks(entry) : '',
+    depends: dependsOn.length > 0 ? dependsOnList(dependsOn) : '',
+  };
+  // A failed step leads with what went wrong; any other leads with what it does.
+  const order = problem
+    ? [sections.happened, sections.todo, sections.notes, sections.how, sections.depends]
+    : [sections.how, sections.todo, sections.notes, sections.depends];
 
   const actions = [inProjectManifest
     ? `<a href="#" data-command="openManifest" data-id="${escape(status.id)}">Open in onboarding.yaml</a>`
     : '<span class="state">This entry comes from the Org or Team settings, not onboarding.yaml.</span>'];
-  if (PROBLEMS.includes(status.state)) {
+  if (problem) {
     actions.push(`<button data-command="askCopilot" data-id="${escape(status.id)}">Ask Copilot to Help</button>`);
   }
-  parts.push(`<footer>${actions.join('\n')}</footer>`);
-  return parts.join('\n');
+  return [
+    '<nav><a href="#" data-command="list">← All entries</a></nav>',
+    `<h1>${mark(status.state)}${escape(status.title)}</h1>`,
+    `<p class="state status-line">${escape(statusLine(status))}</p>`,
+    ...order.filter(Boolean),
+    `<footer>${actions.join('\n')}</footer>`,
+  ].join('\n');
+}
+
+/** "Ready · proven Oct 13, 2026, 2:23 PM", or just the state. */
+function statusLine(status: EntryStatus): string {
+  if (status.state !== 'ready' || !status.provenAt) {
+    return stateText(status);
+  }
+  const when = new Date(status.provenAt).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  return `${stateText(status)} · proven ${when}`;
+}
+
+/** The preset it uses, and the commands that run on this computer, with the preset's filled in. */
+function howItWorks(entry: Entry): string {
+  let filled = entry;
+  try {
+    filled = expandPreset(entry);
+  } catch {
+    // A preset problem shows when setup runs; show the entry as written.
+  }
+  const parts: string[] = [];
+  if (entry.uses) {
+    const values = Object.entries(entry.with ?? {}).map(([key, value]) => `${key} ${value}`).join(', ');
+    parts.push(`<p>Uses the <code>${escape(entry.uses)}</code> preset${values ? ` (${escape(values)})` : ''}.</p>`);
+  }
+  const steps: [label: string, command: Command | undefined, what: string][] = [
+    ['Check', filled.check, 'passes when it is in place'],
+    ['Fix', filled.fix, 'puts it in place'],
+    ['Prove', filled.prove, 'passes when it works'],
+  ];
+  for (const [label, command, what] of steps) {
+    if (command === undefined) {
+      continue;
+    }
+    const text = commandFor(command);
+    parts.push(`<h3>${label} <span class="state">${what}</span></h3>`
+      + (text === undefined ? '<p class="state">No command for this computer.</p>' : `<pre>${escape(text)}</pre>`));
+  }
+  return parts.length > 0 ? `<h2>How it works</h2>${parts.join('\n')}` : '';
+}
+
+function dependsOnList(dependsOn: EntryDetails['dependsOn']): string {
+  const items = dependsOn.map(({ id, status: dep }) => dep
+    ? `<li><a href="#" data-command="entry" data-id="${escape(id)}">${mark(dep.state)}`
+      + `<span class="title">${escape(dep.title)}</span><span class="state">${escape(stateText(dep))}</span></a></li>`
+    : `<li><span class="row"><span class="mark"></span>${escape(id)}<span class="state">is not in the setup plan</span></span></li>`);
+  return `<h2>Depends on</h2><ul class="entries">${items.join('\n')}</ul>`;
+}
+
+/** Text a person wrote: a blank line starts a paragraph, a line break stays, `text` in backticks is code. */
+function prose(text: string): string {
+  return text.trim().split(/\n\s*\n/)
+    .map(paragraph => `<p>${escape(paragraph).replace(/`([^`\n]+)`/g, '<code>$1</code>').replace(/\n/g, '<br>')}</p>`)
+    .join('\n');
 }
 
 function mark(state: EntryState): string {
@@ -132,7 +180,12 @@ ul.entries .title { flex: none; }
 ul.entries .state { margin-left: auto; }
 pre { white-space: pre-wrap; font-family: var(--vscode-editor-font-family); font-size: var(--vscode-editor-font-size);
   background: var(--vscode-textCodeBlock-background); padding: 8px 10px; border-radius: 3px; margin: 0; }
-pre.notes { font-family: inherit; font-size: inherit; }
+h3 { font-size: 1em; font-weight: 600; margin: 12px 0 4px; }
+h3 .state { font-weight: normal; margin-left: 6px; }
+.status-line { margin: 0 0 8px; }
+p { line-height: 1.5; margin: 6px 0; }
+code { font-family: var(--vscode-editor-font-family); font-size: 0.95em; padding: 1px 4px; border-radius: 3px;
+  background: var(--vscode-textCodeBlock-background); }
 footer { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-top: 24px; padding-top: 12px;
   border-top: 1px solid var(--vscode-panel-border); }
 button { font: inherit; color: var(--vscode-button-foreground); background: var(--vscode-button-background);
