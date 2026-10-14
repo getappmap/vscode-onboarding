@@ -5,7 +5,8 @@ import { Entry, MANIFEST_FILE } from './manifest';
 import { isStale } from './sectionSha';
 import { SKILLS } from '../agent/prompts';
 
-export const REVIEW_WITH_COPILOT = 'Review with Copilot';
+export const UPDATE_SETUP_STEPS = 'Update Setup Steps';
+export const SHOW_SECTION = 'Show Section';
 
 /** Entries holding a value whose source text has changed, or is gone. Reads each file once. */
 export async function findStale(entries: Entry[], folder: vscode.Uri): Promise<Entry[]> {
@@ -80,7 +81,10 @@ export function staleMessage(stale: Entry[]): string {
   return `${changed} ${affected}`;
 }
 
-/** The prompt for the onboarding-text-reader skill: what changed, and what to do about it. */
+/**
+ * The prompt for the onboarding-text-reader skill: what changed, and what to do about it. Copilot
+ * saves the updates itself and asks only when a team choice and its README section disagree.
+ */
 export function updatePrompt(stale: Entry[]): string {
   const lines = stale.map(e =>
     `- "${e.title ?? e.id}" (${e.id}): ${e.from!.file} section "${e.from!.section}"`
@@ -89,10 +93,9 @@ export function updatePrompt(stale: Entry[]): string {
     `/${SKILLS.textReader} These README sections have changed since the setup steps below were based on them:`,
     ...lines,
     '',
-    `Compare each section with its setup step in ${MANIFEST_FILE}, and tell me what no longer matches.`,
-    'Propose changes to steps read from the README, with their new SHA. For a team choice, change',
-    'nothing: tell me what differs and ask whether the setup step or the README is right.',
-    'Do not save any change until I approve it.',
+    `Update each setup step in ${MANIFEST_FILE} to match its section, with the new SHA and date, and save.`,
+    'For a team choice, update only the SHA and date when the section still agrees with the step.',
+    'Ask me only if they now disagree. Then tell me in a few lines what you changed.',
   ].join('\n');
 }
 
@@ -103,8 +106,8 @@ export interface StaleActions {
 }
 
 /**
- * Tells the person editing, and offers to review the change with Copilot or to look at the
- * section. `alreadyShown` holds what was shown before, so the same change is not shown twice.
+ * Tells the person editing, and offers to update the setup steps with Copilot or to look at the
+ * (first) changed section. `alreadyShown` holds what was shown before, so the same change is not shown twice.
  */
 export async function notifyStale(stale: Entry[], actions: StaleActions, alreadyShown: Set<string> = new Set()): Promise<void> {
   const fresh = stale.filter(e => !alreadyShown.has(staleKey(e)));
@@ -114,11 +117,12 @@ export async function notifyStale(stale: Entry[], actions: StaleActions, already
   fresh.forEach(e => alreadyShown.add(staleKey(e)));
 
   const first = sectionsOf(fresh)[0];
-  const open = `Open ${first.file}`;
-  const choice = await vscode.window.showInformationMessage(staleMessage(fresh), REVIEW_WITH_COPILOT, open);
-  if (choice === REVIEW_WITH_COPILOT) {
+  const message = `${staleMessage(fresh)} ${UPDATE_SETUP_STEPS} has Copilot bring `
+    + `${fresh.length === 1 ? 'it' : 'them'} up to date.`;
+  const choice = await vscode.window.showInformationMessage(message, UPDATE_SETUP_STEPS, SHOW_SECTION);
+  if (choice === UPDATE_SETUP_STEPS) {
     await actions.openChat(updatePrompt(fresh));
-  } else if (choice === open) {
+  } else if (choice === SHOW_SECTION) {
     await actions.openSection(first.file, first.section);
   }
 }

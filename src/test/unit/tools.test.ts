@@ -85,6 +85,14 @@ suite('Copilot tool: README section SHA', () => {
       /There is no heading "Run locally" in README\.md\. Give the heading exactly as written, with its # marks/);
   });
 
+  test('each call, even one that fails, tells the extension an agent is at work', async () => {
+    let calls = 0;
+    const counted = new SectionShaTool(vscode.Uri.file(folder), () => calls++);
+    await counted.invoke(options({ file: 'README.md', heading: '## Run locally' }));
+    await assert.rejects(counted.invoke(options({ file: 'NOPE.md', heading: '# x' })));
+    assert.strictEqual(calls, 2);
+  });
+
   test('a missing file, or one outside the project, is refused', async () => {
     await assert.rejects(tool().invoke(options({ file: 'NOPE.md', heading: '# x' })), /There is no file NOPE\.md/);
     await assert.rejects(tool().invoke(options({ file: '../../etc/passwd', heading: '# x' })), /is outside the project/);

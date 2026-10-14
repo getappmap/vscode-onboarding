@@ -9,7 +9,7 @@ import { StatusView } from './report/statusView';
 import { STATUS_DIR, STATUS_FILE, StatusRecorder, emptyStatus, provenFrom, readStatus } from './report/statusFile';
 import { findStale, notifyStale } from './manifest/staleCheck';
 import { headingLine } from './manifest/sectionSha';
-import { whenQuiet } from './util/whenQuiet';
+import { holdWhileBusy, whenQuiet } from './util/whenQuiet';
 import { runSetup } from './setup/runSetup';
 import { CheckEntriesTool } from './tools/checkEntriesTool';
 import { SectionShaTool } from './tools/sectionShaTool';
@@ -58,8 +58,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }
   };
   // Wait until saving stops: someone, or an agent, often changes the README and the manifest together.
-  const checkReadmeSoon = whenQuiet(() => void checkReadme(), 5_000);
-  context.subscriptions.push({ dispose: checkReadmeSoon.cancel });
+  // While Copilot asks for section SHAs it is updating both, so wait until it has finished.
+  const agentHold = holdWhileBusy(3 * 60_000);
+  const checkReadmeSoon = whenQuiet(() => agentHold.run(() => void checkReadme()), 5_000);
+  context.subscriptions.push({ dispose: checkReadmeSoon.cancel }, { dispose: agentHold.cancel });
 
   /** Shows the last results from the status file. Skipped while setup runs, since it shows live results then. */
   const showLastResults = async () => {
@@ -199,7 +201,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     log,
     vscode.lm.registerMcpServerDefinitionProvider(PROVIDER_ID, mcp),
     vscode.lm.registerTool(CheckEntriesTool.NAME, new CheckEntriesTool(() => plan.entries, folder?.uri)),
-    vscode.lm.registerTool(SectionShaTool.NAME, new SectionShaTool(folder?.uri)),
+    vscode.lm.registerTool(SectionShaTool.NAME, new SectionShaTool(folder?.uri, () => agentHold.busy())),
     vscode.commands.registerCommand('onboarding.runSetup', () => runProjectSetup(false)),
     vscode.commands.registerCommand('onboarding.reproveSetup', () => runProjectSetup(true)),
     vscode.commands.registerCommand('onboarding.askCopilot', () => askCopilot(report.notReady())),

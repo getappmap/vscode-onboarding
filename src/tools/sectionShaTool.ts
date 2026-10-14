@@ -12,13 +12,15 @@ interface Input { file: string; heading: string; }
 export class SectionShaTool implements vscode.LanguageModelTool<Input> {
   static readonly NAME = 'onboarding_section_sha';
 
-  constructor(private readonly folder?: vscode.Uri) {}
+  /** `onUsed` hears each call: an agent asking for SHAs is working on the manifest and the README. */
+  constructor(private readonly folder?: vscode.Uri, private readonly onUsed?: () => void) {}
 
   prepareInvocation(options: vscode.LanguageModelToolInvocationPrepareOptions<Input>) {
     return { invocationMessage: `Reading the SHA of "${options.input.heading}" in ${options.input.file}` };
   }
 
   async invoke(options: vscode.LanguageModelToolInvocationOptions<Input>): Promise<vscode.LanguageModelToolResult> {
+    this.onUsed?.();
     if (!this.folder) {
       throw new Error('No folder is open.');
     }

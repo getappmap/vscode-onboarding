@@ -6,6 +6,17 @@ description: Draft or extend onboarding.yaml by reading the repository. Use when
 Onboarding extension runs each entry the same way: check whether it is in place, fix it if not,
 check again, then prove it works. You write and change that file; you never run fixes.
 
+## Working with the developer
+
+The developer is not expected to know how `onboarding.yaml` works.
+
+- **Ask only for decisions the project does not already answer**, such as which tool the team
+  uses. Give your recommendation with the question.
+- **Do not ask them to approve technical changes**: commands, entry fields, SHAs, or edits that
+  make the project's files agree. Make the change, then report it in a few plain lines.
+- **Ask about the project, not the manifest.** Good: "The README says `npm i`; setup runs
+  `npm ci`. Which should developers use?" Bad: "Is the entry or the README right?"
+
 ## The format
 
 ```yaml
@@ -17,7 +28,7 @@ entries:
     with: { version: "21" }         # values for the preset
     check: <command>                # passes when it is in place; must change nothing
     fix: <command>                  # puts it in place; runs without asking
-    prove: <command>                # passes when it works, such as a build or a request
+    prove: <command>                # passes when it works; a few seconds, such as one import or one request
     dependsOn: [other-id]           # run after these; skipped if they are not ready
     platforms: [macos, linux]       # optional: runs only on these; left out, runs everywhere
     env: { NAME: value }            # plain values for the commands
@@ -70,6 +81,20 @@ already have a `bin/setup` file.
 - If the project already has a setup script, such as `bin/setup`, call the part of it you need
   rather than copying its steps.
 
+## Keep checks and proofs quick
+
+Setup runs every `check` each time, and every `prove` whenever an entry is new or changed. A
+developer waits for all of them, so each should take a few seconds.
+
+- **`prove` tests the one thing its entry sets up**, not the whole project. To prove packages
+  are installed, load one: `node -e "require('express')"`, `bundle exec ruby -e 'require "rails"'`,
+  `uv run python -c "import app"`. Never run `npm test`, a full test suite, or a full build to
+  prove a package or tool is there.
+- **Leave `prove` out when `check` already shows it works**, such as `java -version` for a JDK.
+- **A first build or test run is its own entry**, at the end, and only if the project's setup
+  instructions ask for one. Run the smallest version: one test file, or a compile without tests.
+- **A `check` changes nothing and needs no network**, unless the entry is about a network service.
+
 ## Steps
 
 1. **Read how the project is set up today.** The README's setup sections, CONTRIBUTING, `docs/`,
@@ -82,18 +107,20 @@ already have a `bin/setup` file.
    files in the commands, rather than copying them: for example compare `ruby -v` with
    `.ruby-version`. A fix runs without asking, so it must change only what its entry needs, and
    be safe to run twice.
-4. **Record where each value came from.** For a value taken from a README section, call the
-   `onboarding_section_sha` tool (#sectionSha) with the file and the heading, and copy the SHA
-   it returns into `from:`. Never compute a SHA yourself: it must match the extension's
-   README check exactly.
-5. **Change the rest of the project to match.** When a change reaches beyond the manifest, such
+4. **Change the rest of the project to match.** When a change reaches beyond the manifest, such
    as moving from Docker to Podman, also update the project files that use the old tool (a rake
-   task, a script, a compose file) and the README, or ask the person whether to. A manifest that
-   disagrees with the project's own files is worse than none.
-6. **Check your work.** Call the `onboarding_check_entries` tool (#checkSetup) to see which
+   task, a script, a compose file) and the README. A manifest that disagrees with the project's
+   own files is worse than none. Do this before step 5.
+5. **Record where each value came from**, once the README edits are saved. For a value taken
+   from a README section, call the `onboarding_section_sha` tool (#sectionSha) with the file and
+   the heading, and copy the SHA it returns into `from:`. Never compute a SHA yourself: it must
+   match the extension's README check exactly. A SHA taken before you edit a section is wrong as
+   soon as you save, and the extension then warns the person that the README changed.
+6. **Check your work.** First call #sectionSha again for every entry with a `from:`, and fix any
+   `sha256` that differs. Then call the `onboarding_check_entries` tool (#checkSetup) to see which
    entries already pass on this computer. Explain any that fail. Do not run fixes yourself.
-7. **Show the person what you wrote**, including any change to their README or other files,
-   and what you were unsure of.
+7. **Tell the person what you set up**, in a few plain lines: the setup steps, the files you
+   changed besides the manifest, and any decision you still need from them.
 
 ## Say exactly how each entry is satisfied
 
@@ -125,8 +152,8 @@ README ("install Node", "use a recent JDK") must not be copied into the manifest
       is already there; do not start a new document.
    3. Only when neither fits, the manifest alone.
 
-   Show the person the exact change to their files before you make it. Then point the entry
-   at what you wrote, so the manifest and the documentation stay tied together:
+   Make the change, and list it when you show your work in step 7. Once it is saved, point
+   the entry at what you wrote, so the manifest and the documentation stay tied together:
    `from: { source: person, file: README.md, section: "## Run locally", sha256: <SHA of that section>, date: <today> }`.
    `source: person` means the extension never rewrites the value on its own; if that README
    section changes later, the person editing it is told instead.

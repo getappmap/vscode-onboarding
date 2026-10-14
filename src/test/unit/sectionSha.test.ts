@@ -5,8 +5,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { Entry } from '../../manifest/manifest';
 import { headingLine, isStale, sectionSha, sectionText, shaOf } from '../../manifest/sectionSha';
-import { REVIEW_WITH_COPILOT, StaleActions, findStale, notifyStale, staleMessage, updatePrompt } from '../../manifest/staleCheck';
-import { whenQuiet } from '../../util/whenQuiet';
+import { SHOW_SECTION, StaleActions, UPDATE_SETUP_STEPS, findStale, notifyStale, staleMessage, updatePrompt } from '../../manifest/staleCheck';
+import { holdWhileBusy, whenQuiet } from '../../util/whenQuiet';
 import { fake } from './vscode.fake';
 
 const README = [
@@ -106,8 +106,9 @@ suite('README check', () => {
     await notifyStale([{ ...entries[0], title: 'rbenv, to install Ruby' }], actions);
     assert.deepStrictEqual(fake.messages, [{
       kind: 'info',
-      message: 'README.md section "Run locally" has changed. The setup step "rbenv, to install Ruby" is based on it and may be out of date.',
-      items: [REVIEW_WITH_COPILOT, 'Open README.md'],
+      message: 'README.md section "Run locally" has changed. The setup step "rbenv, to install Ruby" is based on it and may be out of date. '
+        + 'Update Setup Steps has Copilot bring it up to date.',
+      items: [UPDATE_SETUP_STEPS, SHOW_SECTION],
     }]);
   });
 
@@ -130,20 +131,21 @@ suite('README check', () => {
       'These README sections have changed: README.md "One", docs/setup.md "Two". 2 setup steps are based on them and may be out of date: "A", "C".');
   });
 
-  test('Review with Copilot asks for a comparison, and no change before approval', async () => {
-    fake.answer = REVIEW_WITH_COPILOT;
+  test('Update Setup Steps has Copilot save the updates, asking only when a team choice disagrees', async () => {
+    fake.answer = UPDATE_SETUP_STEPS;
     const { actions, prompts } = recording();
     await notifyStale([entries[1]], actions);
 
     assert.strictEqual(prompts[0], updatePrompt([entries[1]]));
     assert.match(prompts[0], /^\/onboarding-text-reader These README sections have changed/);
     assert.match(prompts[0], /- "docker" \(docker\): README\.md section "## Run in Docker", a team choice/);
-    assert.match(prompts[0], /For a team choice, change\nnothing/);
-    assert.match(prompts[0], /Do not save any change until I approve it\.$/);
+    assert.match(prompts[0], /with the new SHA and date, and save\./);
+    assert.match(prompts[0], /For a team choice, update only the SHA and date when the section still agrees with the step\./);
+    assert.match(prompts[0], /Ask me only if they now disagree\. Then tell me in a few lines what you changed\.$/);
   });
 
-  test('Open README opens the changed section', async () => {
-    fake.answer = 'Open README.md';
+  test('Show Section opens the changed section', async () => {
+    fake.answer = SHOW_SECTION;
     const { actions, opened } = recording();
     await notifyStale([entries[0]], actions);
     assert.deepStrictEqual(opened, ['README.md ## Run locally']);
@@ -185,6 +187,40 @@ suite('README check: timing and finding the section', () => {
     soon.cancel();
     await new Promise(r => setTimeout(r, 30));
     assert.strictEqual(runs, 0);
+  });
+
+  test('with no agent busy, a held run happens at once', () => {
+    let runs = 0;
+    holdWhileBusy(50).run(() => runs++);
+    assert.strictEqual(runs, 1);
+  });
+
+  test('while an agent is busy, the run waits until it has been quiet for the hold', async () => {
+    let runs = 0;
+    const hold = holdWhileBusy(30);
+    hold.busy();
+    hold.run(() => runs++);
+    await new Promise(r => setTimeout(r, 15));
+    hold.busy();
+    await new Promise(r => setTimeout(r, 20));
+    assert.strictEqual(runs, 0, 'the agent was busy again');
+    await new Promise(r => setTimeout(r, 30));
+    assert.strictEqual(runs, 1);
+  });
+
+  test('a held run happens once, and cancel drops it', async () => {
+    let runs = 0;
+    const hold = holdWhileBusy(10);
+    hold.busy();
+    hold.run(() => runs++);
+    hold.run(() => runs++);
+    await new Promise(r => setTimeout(r, 30));
+    assert.strictEqual(runs, 1);
+    hold.busy();
+    hold.run(() => runs++);
+    hold.cancel();
+    await new Promise(r => setTimeout(r, 30));
+    assert.strictEqual(runs, 1);
   });
 
   test('finds the line of a heading, skipping code blocks', () => {
