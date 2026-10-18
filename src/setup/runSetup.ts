@@ -1,5 +1,4 @@
 import { createHash } from 'crypto';
-import type * as vscode from 'vscode';
 import type { Command, Entry } from '../manifest/manifest';
 import type { Because, EntryState, EntryStatus, SetupReporter } from '../report/report';
 import { expandPreset } from './presets';
@@ -16,7 +15,8 @@ export interface CommandOutput {
 }
 
 export interface SetupContext {
-  folder: vscode.Uri;
+  /** The project folder, where the commands run. */
+  folder: string;
   readSecrets(paths: Record<string, string>): Promise<Record<string, string>>;
   /**
    * Shows the developer the exact fix command and asks whether to run it. When left out,
@@ -26,14 +26,14 @@ export interface SetupContext {
   reporter: SetupReporter;
   /** Where to show each command and its output as it runs. */
   output?: CommandOutput;
-  token: vscode.CancellationToken;
+  token: { readonly isCancellationRequested: boolean };
   /**
    * Entry id -> definitionHash of the entries proven on this computer. An entry found here
    * with the same hash is ready without running anything. Updated as entries finish.
    */
   proven: Map<string, string>;
-  /** Run every entry again, even those proven earlier. */
-  reprove?: boolean;
+  /** Run entries again even when proven earlier: every entry, or just the ones with these ids. */
+  reprove?: boolean | ReadonlySet<string>;
 }
 
 /**
@@ -96,6 +96,24 @@ export function inDependencyOrder(entries: Entry[]): Entry[] {
 }
 
 /**
+ * The entry with this id and every entry it depends on, directly or through others, in the
+ * written order. Ids that name no entry are left for runSetup to report.
+ */
+export function withDependencies(entries: Entry[], id: string): Entry[] {
+  const byId = new Map(entries.map(e => [e.id, e]));
+  const needed = new Set<string>();
+  const add = (entryId: string) => {
+    const entry = byId.get(entryId);
+    if (entry && !needed.has(entryId)) {
+      needed.add(entryId);
+      (entry.dependsOn ?? []).forEach(add);
+    }
+  };
+  add(id);
+  return entries.filter(e => needed.has(e.id));
+}
+
+/**
  * Takes every entry through the same steps and reports each change:
  *   check -> fix -> check again -> prove.
  * A fix runs unless the developer is asked (ctx.askToFix) and says no.
@@ -151,7 +169,8 @@ async function setUpOne(written: Entry, ctx: SetupContext, report: Report): Prom
   }
 
   const hash = definitionHash(entry);
-  if (!ctx.reprove && ctx.proven.get(entry.id) === hash) {
+  const reprove = ctx.reprove instanceof Set ? ctx.reprove.has(entry.id) : !!ctx.reprove;
+  if (!reprove && ctx.proven.get(entry.id) === hash) {
     report(entry, 'ready', 'Proven earlier.', 'proven-earlier');
     return;
   }
@@ -178,7 +197,7 @@ async function setUpOne(written: Entry, ctx: SetupContext, report: Report): Prom
       output?.commandStarted(entry, step, text);
     }
     const started = Date.now();
-    const result = await runCommand(command, ctx.folder.fsPath, { ...entry.env, ...secrets }, ctx.token,
+    const result = await runCommand(command, ctx.folder, { ...entry.env, ...secrets }, ctx.token,
       { secrets: Object.values(secrets), onLine: output && (line => output.commandLine(line)) });
     if (text !== undefined) {
       output?.commandEnded(result, Date.now() - started);

@@ -52,7 +52,7 @@ suite('Copilot tool: check setup entries', function () {
 
   test('an unknown entry says which entries there are', async () => {
     await assert.rejects(tool().invoke(options({ entryId: 'nope' })),
-      /There is no entry "nope"\. The entries are: ok, broken, secret, bad-preset\. Leave out entryId/);
+      /There is no entry "nope"\. The entries are: ok, broken, secret, bad-preset\. Leave out the entry id/);
   });
 
   test('refuses in a folder that is not trusted, and says what to do', async () => {

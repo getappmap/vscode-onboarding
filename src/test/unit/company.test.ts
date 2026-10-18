@@ -2,46 +2,46 @@ import * as assert from 'assert';
 import * as http from 'http';
 import type { AddressInfo } from 'net';
 import { fetchOrgSettings, readSecret } from '../../company/company';
-import { fake } from './vscode.fake';
 
 const isWindows = process.platform === 'win32';
 
 suite('Company: secret store', function () {
   this.timeout(20_000);
-  setup(() => fake.reset());
+  let command = '';
+  setup(() => { command = ''; });
 
   test('runs the secretCommand setting with the path, and returns what it prints', async () => {
-    fake.settings['onboarding.secretCommand'] = isWindows ? 'Write-Output "value-of-$({path})"' : 'echo "value-of-{path}"';
-    assert.strictEqual(await readSecret('dev/splunk/hec-token'), 'value-of-dev/splunk/hec-token');
+    command = isWindows ? 'Write-Output "value-of-$({path})"' : 'echo "value-of-{path}"';
+    assert.strictEqual(await readSecret('dev/splunk/hec-token', command), 'value-of-dev/splunk/hec-token');
   });
 
   test('a path cannot break out of the command', async () => {
-    fake.settings['onboarding.secretCommand'] = isWindows ? 'Write-Output {path}' : 'printf %s {path}';
-    assert.strictEqual(await readSecret('a b; echo injected'), 'a b; echo injected');
+    command = isWindows ? 'Write-Output {path}' : 'printf %s {path}';
+    assert.strictEqual(await readSecret('a b; echo injected', command), 'a b; echo injected');
   });
 
   test('keeps a secret exactly as printed, apart from one final line break', async () => {
-    fake.settings['onboarding.secretCommand'] = isWindows ? "[Console]::Out.Write(\"  two`nlines  `n\")" : "printf '  two\\nlines  \\n'";
-    assert.strictEqual(await readSecret('x'), '  two\nlines  ');
+    command = isWindows ? "[Console]::Out.Write(\"  two`nlines  `n\")" : "printf '  two\\nlines  \\n'";
+    assert.strictEqual(await readSecret('x', command), '  two\nlines  ');
   });
 
   test('an empty answer is no value', async () => {
-    fake.settings['onboarding.secretCommand'] = isWindows ? "[Console]::Out.Write('')" : 'true';
-    assert.strictEqual(await readSecret('x'), undefined);
+    command = isWindows ? "[Console]::Out.Write('')" : 'true';
+    assert.strictEqual(await readSecret('x', command), undefined);
   });
 
   test('a failure shows the error output, never standard output', async () => {
-    fake.settings['onboarding.secretCommand'] = isWindows
+    command = isWindows
       ? '[Console]::Out.Write("half-secret"); [Console]::Error.WriteLine("permission denied"); exit 2'
       : 'printf half-secret; echo "permission denied" >&2; exit 2';
-    await assert.rejects(readSecret('dev/token'), (err: Error) => {
+    await assert.rejects(readSecret('dev/token', command), (err: Error) => {
       assert.strictEqual(err.message, 'the secret store could not read dev/token: permission denied');
       return true;
     });
   });
 
   test('says how to set it up when there is no secret store', async () => {
-    await assert.rejects(readSecret('x'), /no secret store is set up\. Set onboarding\.secretCommand/);
+    await assert.rejects(readSecret('x', command), /no secret store is set up\. Set onboarding\.secretCommand/);
   });
 });
 
@@ -63,14 +63,15 @@ suite('Company: Org settings server', function () {
     url = `http://127.0.0.1:${(server.address() as AddressInfo).port}/onboarding`;
   });
   suiteTeardown(() => new Promise(resolve => server.close(resolve)));
-  setup(() => fake.reset());
+  let serverUrl = '';
+  setup(() => { serverUrl = ''; });
 
   test('no server set gives no layers', async () => {
-    assert.deepStrictEqual(await fetchOrgSettings('payments'), { layers: [] });
+    assert.deepStrictEqual(await fetchOrgSettings('payments', serverUrl), { layers: [] });
   });
 
   test('reads the Org and Team layers for the team', async () => {
-    fake.settings['onboarding.orgSettingsUrl'] = url;
+    serverUrl = url;
     answer = {
       status: 200,
       body: {
@@ -78,7 +79,7 @@ suite('Company: Org settings server', function () {
         team: { entries: [{ id: 'vpn', check: 'true' }] },
       },
     };
-    const settings = await fetchOrgSettings('payments');
+    const settings = await fetchOrgSettings('payments', serverUrl);
 
     assert.strictEqual(lastPath, '/onboarding?team=payments');
     assert.deepStrictEqual(settings.layers.map(l => l.entries.map(e => e.id)), [['proxy'], ['vpn']]);
@@ -86,26 +87,26 @@ suite('Company: Org settings server', function () {
   });
 
   test('no team layer is fine', async () => {
-    fake.settings['onboarding.orgSettingsUrl'] = url;
+    serverUrl = url;
     answer = { status: 200, body: { org: { entries: [] }, team: null } };
-    assert.strictEqual((await fetchOrgSettings(undefined)).layers.length, 1);
+    assert.strictEqual((await fetchOrgSettings(undefined, serverUrl)).layers.length, 1);
     assert.strictEqual(lastPath, '/onboarding');
   });
 
   test('a layer with mistakes is checked like a manifest', async () => {
-    fake.settings['onboarding.orgSettingsUrl'] = url;
+    serverUrl = url;
     answer = { status: 200, body: { org: { entries: [{ id: 'x' }] } } };
-    await assert.rejects(fetchOrgSettings(undefined), /^ManifestError: Org layer has a problem/);
+    await assert.rejects(fetchOrgSettings(undefined, serverUrl), /^ManifestError: Org layer has a problem/);
   });
 
   test('an error status is an error', async () => {
-    fake.settings['onboarding.orgSettingsUrl'] = url;
+    serverUrl = url;
     answer = { status: 403, body: {} };
-    await assert.rejects(fetchOrgSettings(undefined), /answered 403 Forbidden/);
+    await assert.rejects(fetchOrgSettings(undefined, serverUrl), /answered 403 Forbidden/);
   });
 
   test('only https, except on this computer', async () => {
-    fake.settings['onboarding.orgSettingsUrl'] = 'http://settings.example.com/onboarding';
-    await assert.rejects(fetchOrgSettings(undefined), /must use https/);
+    serverUrl = 'http://settings.example.com/onboarding';
+    await assert.rejects(fetchOrgSettings(undefined, serverUrl), /must use https/);
   });
 });

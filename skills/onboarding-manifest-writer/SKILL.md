@@ -2,9 +2,14 @@
 name: onboarding-manifest-writer
 description: Draft or extend onboarding.yaml by reading the repository. Use when a repository has no onboarding.yaml, or when asked to add or change a setup entry.
 ---
-`onboarding.yaml` lists what a developer's computer needs to work on this repository. The
-Onboarding extension runs each entry the same way: check whether it is in place, fix it if not,
-check again, then prove it works. You write and change that file; you never run fixes.
+`onboarding.yaml` lists what a developer's computer needs to work on this repository. Onboarding
+runs each entry the same way: check whether it is in place, fix it if not, check again, then
+prove it works. You write and change that file; you never run fixes.
+{{#standalone}}
+
+In the commands below, `<skill>` is the full path of this skill's folder and `<repo>` is the repository's root
+folder, the one that holds `onboarding.yaml`. Always pass `--project <repo>`.
+{{/standalone}}
 
 ## Working with the developer
 
@@ -112,13 +117,12 @@ developer waits for all of them, so each should take a few seconds.
    task, a script, a compose file) and the README. A manifest that disagrees with the project's
    own files is worse than none. Do this before step 5.
 5. **Record where each value came from**, once the README edits are saved. For a value taken
-   from a README section, call the `onboarding_section_sha` tool (#sectionSha) with the file and
-   the heading, and copy the SHA it returns into `from:`. Never compute a SHA yourself: it must
-   match the extension's README check exactly. A SHA taken before you edit a section is wrong as
-   soon as you save, and the extension then warns the person that the README changed.
-6. **Check your work.** First call #sectionSha again for every entry with a `from:`, and fix any
-   `sha256` that differs. Then call the `onboarding_check_entries` tool (#checkSetup) to see which
-   entries already pass on this computer. Explain any that fail. Do not run fixes yourself.
+   from a README section, use {{sha}} with the file and the heading, and copy the SHA it returns
+   into `from:`. Never compute a SHA yourself: it must match Onboarding's README check exactly. A
+   SHA taken before you edit a section is wrong as soon as you save, and Onboarding then warns
+   the person that the README changed.
+6. **Check your work.** First get the SHA again for every entry with a `from:`, and fix any
+   `sha256` that differs. Then use {{check}} to see which entries already pass on this computer. Explain any that fail. Do not run fixes yourself.
 7. **Tell the person what you set up**, in a few plain lines: the setup steps, the files you
    changed besides the manifest, and any decision you still need from them.
 
@@ -155,7 +159,7 @@ README ("install Node", "use a recent JDK") must not be copied into the manifest
    Make the change, and list it when you show your work in step 7. Once it is saved, point
    the entry at what you wrote, so the manifest and the documentation stay tied together:
    `from: { source: person, file: README.md, section: "## Run locally", sha256: <SHA of that section>, date: <today> }`.
-   `source: person` means the extension never rewrites the value on its own; if that README
+   `source: person` means Onboarding never rewrites the value on its own; if that README
    section changes later, the person editing it is told instead.
 
 4. **Prefer tools that switch versions per project.** A fix must not change what other

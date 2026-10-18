@@ -9,4 +9,4 @@
   it, such as activation or `package.json` contributions.
 - Why: AppMap Gold Traces cannot record tests that run inside VS Code.
 
-Commands and details: see the Tests section of README.md.
+Commands and details: see the Tests section of CONTRIBUTING.md.

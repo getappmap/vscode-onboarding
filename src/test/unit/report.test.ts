@@ -86,6 +86,22 @@ suite('Report: during and after a run', () => {
     assert.strictEqual(report.getChildren()[1].state, 'fixing');
   });
 
+  test('a run of one row leaves the other rows, and counts only its own', () => {
+    report.show([
+      { id: 'jdk', title: 'Java 21', state: 'ready' },
+      { id: 'gradle', title: 'gradle', state: 'failed', detail: 'boom' },
+    ]);
+    report.begin([gradle]);
+    assert.deepStrictEqual(report.getChildren().map(r => r.state), ['ready', 'waiting']);
+
+    report.update({ id: 'gradle', title: 'gradle', state: 'checking' });
+    assert.deepStrictEqual(progress, [{ message: 'Checking gradle, 1 of 1' }]);
+
+    report.end([{ id: 'gradle', title: 'gradle', state: 'ready' }]);
+    assert.deepStrictEqual(report.getChildren().map(r => r.state), ['ready', 'ready']);
+    assert.deepStrictEqual(fake.messages, [{ kind: 'info', message: 'Onboarding complete: 1 of 1 ready.', items: [SHOW_REPORT] }]);
+  });
+
   test('an update for a row not shown is ignored', () => {
     report.begin([jdk]);
     report.update({ id: 'other', title: 'other', state: 'ready' });
@@ -194,9 +210,16 @@ suite('Report: rows in the list', () => {
 suite('Report: progress', () => {
   setup(() => fake.reset());
 
-  test('shows on the report view and in a notification, and returns what setup returns', async () => {
-    const result = await withSetupProgress(async () => 'done');
+  test('shows on the report view and in the status bar, and returns what setup returns', async () => {
+    const result = await withSetupProgress({ isCancellationRequested: false } as vscode.CancellationToken, async () => 'done');
     assert.strictEqual(result, 'done');
-    assert.deepStrictEqual(fake.progressLocations, [{ viewId: 'onboarding.report' }, vscode.ProgressLocation.Notification]);
+    // Not a notification: that would cover the Copilot chat box.
+    assert.deepStrictEqual(fake.progressLocations, [{ viewId: 'onboarding.report' }, vscode.ProgressLocation.Window]);
+  });
+
+  test('setup gets the token the Stop button cancels', async () => {
+    const stop = { isCancellationRequested: true } as vscode.CancellationToken;
+    const seen = await withSetupProgress(stop, async (_progress, token) => token);
+    assert.strictEqual(seen, stop);
   });
 });

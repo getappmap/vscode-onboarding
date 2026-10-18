@@ -1,15 +1,35 @@
 {
   "name": "onboarding",
   "displayName": "Onboarding",
-  "description": "Sets up a developer's computer for this repository",
-  "publisher": "your-company",
-  "version": "0.0.1",
+  "description": "Set up a developer's computer for a repository: check, fix and prove each tool and credential it needs, with help from GitHub Copilot",
+  "publisher": "appland",
+  "version": "1.0.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/getappmap/vscode-onboarding.git"
+  },
+  "bugs": {
+    "url": "https://github.com/getappmap/vscode-onboarding/issues"
+  },
+  "homepage": "https://github.com/getappmap/vscode-onboarding#readme",
   "engines": {
     "vscode": "^1.134.0",
     "node": ">=24"
   },
   "categories": [
-    "Other"
+    "Other",
+    "AI",
+    "Chat"
+  ],
+  "keywords": [
+    "onboarding",
+    "setup",
+    "developer environment",
+    "dev environment",
+    "copilot",
+    "agent skills",
+    "manifest"
   ],
   "main": "./dist/extension.js",
   "activationEvents": [
@@ -26,6 +46,19 @@
       {
         "command": "onboarding.runSetup",
         "title": "Run Setup",
+        "category": "Onboarding",
+        "icon": "$(play)"
+      },
+      {
+        "command": "onboarding.stopSetup",
+        "title": "Stop Setup",
+        "category": "Onboarding",
+        "icon": "$(debug-stop)",
+        "enablement": "onboarding.running"
+      },
+      {
+        "command": "onboarding.runEntry",
+        "title": "Run This Step",
         "category": "Onboarding",
         "icon": "$(play)"
       },
@@ -95,7 +128,7 @@
       {
         "view": "onboarding.report",
         "when": "onboarding.viewState == loading || !onboarding.viewState",
-        "contents": "Reading onboarding.yaml\u2026"
+        "contents": "Reading onboarding.yaml…"
       },
       {
         "view": "onboarding.report",
@@ -117,7 +150,12 @@
       "view/title": [
         {
           "command": "onboarding.runSetup",
-          "when": "view == onboarding.report",
+          "when": "view == onboarding.report && !onboarding.running",
+          "group": "navigation"
+        },
+        {
+          "command": "onboarding.stopSetup",
+          "when": "view == onboarding.report && onboarding.running",
           "group": "navigation"
         },
         {
@@ -143,18 +181,36 @@
       ],
       "view/item/context": [
         {
+          "command": "onboarding.runEntry",
+          "when": "view == onboarding.report && !onboarding.running",
+          "group": "inline@1"
+        },
+        {
+          "command": "onboarding.stopSetup",
+          "when": "view == onboarding.report && viewItem =~ /^(checking|fixing|proving)$/",
+          "group": "inline@1"
+        },
+        {
           "command": "onboarding.askCopilotAboutEntry",
           "when": "view == onboarding.report && viewItem =~ /^(failed|skipped)$/",
-          "group": "inline"
+          "group": "inline@2"
         }
       ],
       "commandPalette": [
+        {
+          "command": "onboarding.stopSetup",
+          "when": "onboarding.running"
+        },
         {
           "command": "onboarding.askCopilotAboutEntry",
           "when": "false"
         },
         {
           "command": "onboarding.showEntry",
+          "when": "false"
+        },
+        {
+          "command": "onboarding.runEntry",
           "when": "false"
         }
       ]
@@ -230,13 +286,13 @@
     ],
     "chatSkills": [
       {
-        "path": "./skills/onboarding-manifest-writer/SKILL.md"
+        "path": "./dist/skills/vscode/onboarding-manifest-writer/SKILL.md"
       },
       {
-        "path": "./skills/onboarding-text-reader/SKILL.md"
+        "path": "./dist/skills/vscode/onboarding-text-reader/SKILL.md"
       },
       {
-        "path": "./skills/onboarding-troubleshooter/SKILL.md"
+        "path": "./dist/skills/vscode/onboarding-setup/SKILL.md"
       }
     ]
   },
@@ -249,13 +305,14 @@
     "package": "npm run check-types && npm run lint && node esbuild.js --production",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
-    "pretest": "npm run compile-tests && npm run lint",
+    "pretest": "npm run compile-tests && npm run lint && node esbuild.js",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "test": "mocha",
     "pretest:vscode": "npm run compile-tests && npm run compile",
     "test:vscode": "vscode-test",
-    "vsix": "vsce package --no-dependencies --allow-missing-repository --skip-license"
+    "vsix": "vsce package --no-dependencies",
+    "skills:zip": "rm -f onboarding-skills.zip && cd dist/skills/standalone && zip -rqX ../../../onboarding-skills.zip . -x '.*' '*/.*'"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

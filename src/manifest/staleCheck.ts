@@ -1,21 +1,17 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import * as vscode from 'vscode';
 import { Entry, MANIFEST_FILE } from './manifest';
 import { isStale } from './sectionSha';
 import { SKILLS } from '../agent/prompts';
 
-export const UPDATE_SETUP_STEPS = 'Update Setup Steps';
-export const SHOW_SECTION = 'Show Section';
-
 /** Entries holding a value whose source text has changed, or is gone. Reads each file once. */
-export async function findStale(entries: Entry[], folder: vscode.Uri): Promise<Entry[]> {
+export async function findStale(entries: Entry[], folder: string): Promise<Entry[]> {
   const files = new Map<string, Promise<string | undefined>>();
   const read = (file: string) => {
     if (!files.has(file)) {
       // A file outside the project is never read.
-      const full = path.resolve(folder.fsPath, file);
-      const inside = full.startsWith(path.resolve(folder.fsPath) + path.sep);
+      const full = path.resolve(folder, file);
+      const inside = full.startsWith(path.resolve(folder) + path.sep);
       files.set(file, inside ? fs.readFile(full, 'utf8').catch(() => undefined) : Promise.resolve(undefined));
     }
     return files.get(file)!;
@@ -31,10 +27,10 @@ export async function findStale(entries: Entry[], folder: vscode.Uri): Promise<E
   return stale;
 }
 
-interface Section { file: string; section: string; }
+export interface Section { file: string; section: string; }
 
 /** The changed sections behind these entries, in order, each once. */
-function sectionsOf(stale: Entry[]): Section[] {
+export function sectionsOf(stale: Entry[]): Section[] {
   const sections: Section[] = [];
   for (const { from } of stale) {
     if (!sections.some(s => s.file === from!.file && s.section === from!.section)) {
@@ -97,36 +93,4 @@ export function updatePrompt(stale: Entry[]): string {
     'For a team choice, update only the SHA and date when the section still agrees with the step.',
     'Ask me only if they now disagree. Then tell me in a few lines what you changed.',
   ].join('\n');
-}
-
-export interface StaleActions {
-  openChat(prompt: string): Promise<void>;
-  /** Opens the file at the section. */
-  openSection(file: string, section: string): Promise<void>;
-}
-
-/**
- * Tells the person editing, and offers to update the setup steps with Copilot or to look at the
- * (first) changed section. `alreadyShown` holds what was shown before, so the same change is not shown twice.
- */
-export async function notifyStale(stale: Entry[], actions: StaleActions, alreadyShown: Set<string> = new Set()): Promise<void> {
-  const fresh = stale.filter(e => !alreadyShown.has(staleKey(e)));
-  if (fresh.length === 0) {
-    return;
-  }
-  fresh.forEach(e => alreadyShown.add(staleKey(e)));
-
-  const first = sectionsOf(fresh)[0];
-  const message = `${staleMessage(fresh)} ${UPDATE_SETUP_STEPS} has Copilot bring `
-    + `${fresh.length === 1 ? 'it' : 'them'} up to date.`;
-  const choice = await vscode.window.showInformationMessage(message, UPDATE_SETUP_STEPS, SHOW_SECTION);
-  if (choice === UPDATE_SETUP_STEPS) {
-    await actions.openChat(updatePrompt(fresh));
-  } else if (choice === SHOW_SECTION) {
-    await actions.openSection(first.file, first.section);
-  }
-}
-
-function staleKey(entry: Entry): string {
-  return `${entry.id}:${entry.from?.file}:${entry.from?.section}:${entry.from?.sha256}`;
 }

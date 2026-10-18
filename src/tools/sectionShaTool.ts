@@ -1,7 +1,5 @@
-import * as fs from 'fs/promises';
-import * as path from 'path';
 import * as vscode from 'vscode';
-import { sectionSha } from '../manifest/sectionSha';
+import { sectionShaOfFile } from '../manifest/sectionSha';
 
 interface Input { file: string; heading: string; }
 
@@ -25,22 +23,7 @@ export class SectionShaTool implements vscode.LanguageModelTool<Input> {
       throw new Error('No folder is open.');
     }
     const { file, heading } = options.input;
-    const root = path.resolve(this.folder.fsPath);
-    const full = path.resolve(root, file);
-    if (!full.startsWith(root + path.sep)) {
-      throw new Error(`${file} is outside the project. Give a path relative to the project folder, such as README.md.`);
-    }
-    let markdown: string;
-    try {
-      markdown = await fs.readFile(full, 'utf8');
-    } catch {
-      throw new Error(`There is no file ${file} in the project. Give a path relative to the project folder, such as README.md.`);
-    }
-    const sha256 = sectionSha(markdown, heading);
-    if (sha256 === undefined) {
-      throw new Error(`There is no heading "${heading}" in ${file}. Give the heading exactly as written, `
-        + 'with its # marks, for example "## Run locally".');
-    }
+    const sha256 = await sectionShaOfFile(this.folder.fsPath, file, heading);
     return new vscode.LanguageModelToolResult([
       new vscode.LanguageModelTextPart(JSON.stringify({ file, section: heading, sha256 })),
     ]);

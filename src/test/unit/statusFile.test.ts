@@ -109,6 +109,24 @@ suite('Status file: recording a run', () => {
     });
   });
 
+  test('a run of some entries keeps the records of the others', async () => {
+    const before: Status = {
+      machine: 'laptop', platform: 'macos',
+      entries: {
+        jdk: { title: 'Java 21', state: 'ready', proven: 'hash-1' },
+        vpn: { title: 'vpn', state: 'failed' },
+      },
+    };
+    const recorder = new StatusRecorder(folder, before, provenFrom(before), undefined, undefined, true);
+    recorder.begin([{ id: 'vpn', check: 'x' }]);
+    await recorder.saved();
+
+    assert.deepStrictEqual(onDisk().entries, {
+      jdk: { title: 'Java 21', state: 'ready', proven: 'hash-1' },
+      vpn: { title: 'vpn', state: 'waiting' },
+    });
+  });
+
   test('a failed write is reported, not hidden', async () => {
     const blocked = path.join(folder, 'blocked');
     fs.writeFileSync(blocked, 'a file where the folder should be');

@@ -81,6 +81,8 @@ export class StatusRecorder implements SetupReporter {
     private readonly proven: Map<string, string>,
     private readonly onError: (err: Error) => void = () => undefined,
     private readonly now: () => Date = () => new Date(),
+    /** The run covers only some entries, so the records of the others stay. */
+    private readonly partial = false,
   ) {}
 
   begin(entries: Entry[]): void {
@@ -90,11 +92,14 @@ export class StatusRecorder implements SetupReporter {
       run_finished: null,
       machine: os.hostname(),
       platform: currentPlatform(),
-      entries: Object.fromEntries(entries.map(e => [e.id, {
-        ...previous[e.id],
-        title: e.title ?? e.id,
-        state: 'waiting' as EntryState,
-      }])),
+      entries: {
+        ...(this.partial ? previous : {}),
+        ...Object.fromEntries(entries.map(e => [e.id, {
+          ...previous[e.id],
+          title: e.title ?? e.id,
+          state: 'waiting' as EntryState,
+        }])),
+      },
     };
     this.save();
   }

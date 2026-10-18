@@ -1,10 +1,20 @@
 ---
-name: onboarding-troubleshooter
-description: Explain a failed setup entry in plain words and find the fix. Use after onboarding setup reports entries that are not ready.
+name: onboarding-setup
+description: Set up this computer for the repository from onboarding.yaml, and explain and fix entries that fail. Use when asked to set up, onboard, or get ready to work on a repository that has an onboarding.yaml, or when onboarding setup reports entries that are not ready.
 ---
-The Onboarding extension sets up this computer from `onboarding.yaml`. The developer asked for
-help with entries that are not ready. The request includes each entry's result, its definition
-from `onboarding.yaml`, and any notes from the team.
+Onboarding sets up this computer from `onboarding.yaml`. Each entry says how to check that
+something is in place, fix it, and prove it works.
+{{#vscode}}
+
+The developer asked for help with entries that are not ready. The request includes each entry's
+result, its definition from `onboarding.yaml`, and any notes from the team.
+{{/vscode}}
+{{#standalone}}
+
+In the commands below, `<skill>` is the full path of this skill's folder and `<repo>` is the repository's root
+folder, the one that holds `onboarding.yaml`. Always pass `--project <repo>`: the script does
+not look at the folder it runs in.
+{{/standalone}}
 
 ## Working with the developer
 
@@ -17,11 +27,24 @@ The developer is not expected to know how `onboarding.yaml` works.
 - **Ask about the project, not the manifest.** Good: "The README says `npm i`; setup runs
   `npm ci`. Which should developers use?" Bad: "Is the entry or the README right?"
 
+{{#standalone}}
+## Run setup
+
+Run {{run-setup}}. It checks, fixes and proves every entry, and prints each result. For each
+entry that is not ready, it prints what happened, the entry from `onboarding.yaml`, and the
+team's notes. It remembers what it proved, so running it again is quick.
+
+If every entry is ready, tell the developer and stop. Otherwise, follow the steps below for the
+entries that are not ready.
+
+{{/standalone}}
 ## Steps
 
-1. **See what is true now.** Call the `onboarding_check_entries` tool (#checkSetup) for each
-   entry. The result in the request may be old. An entry that needs secrets cannot be checked by
-   the tool; work from its result in the request.
+1. **See what is true now.** Use {{check}} for each entry that is not ready.
+{{#vscode}}
+   The result in the request may be old.
+{{/vscode}}
+   An entry that needs secrets cannot be checked this way; work from its setup result.
 2. **Read the failure.** Read the failed step's output and the entry's `troubleshooting` notes.
    Do not repeat things the notes say were tried before and did not help.
 3. **Name the cause in one plain sentence.** Say whether it is:
@@ -36,8 +59,13 @@ The developer is not expected to know how `onboarding.yaml` works.
    - For missing access, do not try to get around it. If an MCP server for access requests is
      available, use it to open a filled-in request with the team that can grant it. If not, say
      who to ask, using the entry's `failMessage`.
-5. **Confirm.** Call the check tool again, and tell the developer to run
-   **Onboarding: Run Setup** to finish.
+5. **Confirm.**
+{{#vscode}}
+   Use the check tool again, and tell the developer to run {{run-setup}} to finish.
+{{/vscode}}
+{{#standalone}}
+   Run {{run-setup}} again, and repeat from step 1 for anything still not ready.
+{{/standalone}}
 6. **Help the next person.** If the fix would help everyone, put it into `onboarding.yaml`: a
    better `fix`, `failMessage` or `troubleshooting` note. Tell the developer what you added.
 

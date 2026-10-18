@@ -2,10 +2,9 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import * as vscode from 'vscode';
 import type { Command, Entry } from '../../manifest/manifest';
 import type { EntryStatus } from '../../report/report';
-import { SetupContext, definitionHash, inDependencyOrder, runSetup } from '../../setup/runSetup';
+import { SetupContext, definitionHash, inDependencyOrder, runSetup, withDependencies } from '../../setup/runSetup';
 
 // Commands that work in sh and in PowerShell.
 const fileExists = (name: string): Command => ({
@@ -24,7 +23,7 @@ function context(folder: string, options: {
   /** Ask before each fix, giving this answer. Left out, fixes run without asking. */
   answer?: boolean;
   proven?: Map<string, string>;
-  reprove?: boolean;
+  reprove?: boolean | ReadonlySet<string>;
 } = {}) {
   const updates: EntryStatus[] = [];
   const asked: string[] = [];
@@ -33,7 +32,7 @@ function context(folder: string, options: {
   const token = { isCancellationRequested: false, onCancellationRequested: () => ({ dispose() {} }) };
 
   const ctx: SetupContext = {
-    folder: vscode.Uri.file(folder),
+    folder,
     async readSecrets(paths) {
       secretReads.push(paths);
       const values: Record<string, string> = {};
@@ -57,7 +56,7 @@ function context(folder: string, options: {
       },
       end: statuses => events.push(`end ${statuses.length}`),
     },
-    token: token as unknown as vscode.CancellationToken,
+    token,
     proven: options.proven ?? new Map(),
     reprove: options.reprove,
   };
@@ -85,6 +84,12 @@ suite('runSetup: dependency order', () => {
 
   test('leaves ids that name no entry for the runner to report', () => {
     assert.deepStrictEqual(ids(inDependencyOrder([{ id: 'a', dependsOn: ['missing'] }])), ['a']);
+  });
+
+  test('one entry comes with what it depends on, directly or not, and nothing else', () => {
+    assert.deepStrictEqual(ids(withDependencies([
+      { id: 'jdk' }, { id: 'other' }, { id: 'gradle', dependsOn: ['jdk', 'missing'] }, { id: 'app', dependsOn: ['gradle'] },
+    ], 'app')), ['jdk', 'gradle', 'app']);
   });
 
   test('names the loop when entries depend on each other', () => {
@@ -319,6 +324,15 @@ suite('runSetup: proving once', function () {
     assert.strictEqual(result[0].state, 'ready');
     assert.strictEqual(result[0].detail, undefined);
     assert.ok(exists('proved'));
+  });
+
+  test('asking to prove one entry again leaves the others proven', async () => {
+    const other: Entry = { id: 'other', check: touch('other-checked') };
+    const proven = new Map([['tool', definitionHash(entry)], ['other', definitionHash(other)]]);
+    const { ctx } = context(folder, { proven, reprove: new Set(['tool']), secrets: { 'dev/t': 'x' } });
+    const result = await runSetup([other, entry], ctx);
+    assert.deepStrictEqual(result.map(r => r.because), ['proven-earlier', undefined]);
+    assert.ok(exists('proved') && !exists('other-checked'));
   });
 
   test('an entry that fails when proved again is forgotten', async () => {

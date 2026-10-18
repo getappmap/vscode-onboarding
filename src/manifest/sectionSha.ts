@@ -1,4 +1,6 @@
 import { createHash } from 'crypto';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import type { Provenance } from './manifest';
 
 const FENCE = /^(```|~~~)/;
@@ -70,6 +72,31 @@ export function shaOf(text: string): string {
 export function sectionSha(markdown: string, heading: string): string | undefined {
   const text = sectionText(markdown, heading);
   return text === undefined ? undefined : shaOf(text);
+}
+
+/**
+ * The SHA of a section of a Markdown file in the project, for the agent writing `from:`.
+ * `file` is relative to the project folder. Throws in plain words, saying how to ask again,
+ * when the file is outside the project, missing, or has no such heading.
+ */
+export async function sectionShaOfFile(folder: string, file: string, heading: string): Promise<string> {
+  const root = path.resolve(folder);
+  const full = path.resolve(root, file);
+  if (!full.startsWith(root + path.sep)) {
+    throw new Error(`${file} is outside the project. Give a path relative to the project folder, such as README.md.`);
+  }
+  let markdown: string;
+  try {
+    markdown = await fs.readFile(full, 'utf8');
+  } catch {
+    throw new Error(`There is no file ${file} in the project. Give a path relative to the project folder, such as README.md.`);
+  }
+  const sha256 = sectionSha(markdown, heading);
+  if (sha256 === undefined) {
+    throw new Error(`There is no heading "${heading}" in ${file}. Give the heading exactly as written, `
+      + 'with its # marks, for example "## Run locally".');
+  }
+  return sha256;
 }
 
 /**

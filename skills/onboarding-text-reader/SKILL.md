@@ -3,12 +3,17 @@ name: onboarding-text-reader
 description: Read one README section, pull out setup values, and record the section and its SHA for each. Use while drafting onboarding.yaml, and when a section behind a guessed value has changed.
 ---
 Some values in `onboarding.yaml` come from the project's README. Each one records where it came
-from, so the Onboarding extension can tell when that text changes:
+from, so Onboarding can tell when that text changes:
 
 ```yaml
 from: { source: guessed, file: README.md, section: "## Run locally", sha256: bef8a62f, date: 2026-10-13 }
 ```
 
+{{#standalone}}
+In the commands below, `<skill>` is the full path of this skill's folder and `<repo>` is the repository's root
+folder, the one that holds `onboarding.yaml`. Always pass `--project <repo>`.
+
+{{/standalone}}
 ## Working with the developer
 
 The developer is not expected to know how `onboarding.yaml` works.
@@ -26,17 +31,23 @@ The developer is not expected to know how `onboarding.yaml` works.
    with `#` inside a code block is a shell comment, not a heading.
 2. Pull out only what a developer must have or do: tools and versions, install commands,
    services, environment variables, and secrets (record the secret's store path, never a value).
-3. Record each value with `source: guessed`. Get the SHA from the `onboarding_section_sha`
-   tool (#sectionSha), giving the file and the heading exactly as written. Never compute a SHA
-   yourself. Use today's date.
+3. Record each value with `source: guessed`. Get the SHA from {{sha}}, giving the file and the
+   heading exactly as written. Never compute a SHA yourself. Use today's date.
 
 ## When the text behind a value has changed
 
-The extension names the entries whose section changed. Make the updates and save them; do not
-ask the developer to approve each one. For each entry:
+{{#vscode}}
+The extension names the entries whose section changed.
+{{/vscode}}
+{{#standalone}}
+`node <skill>/scripts/onboard.mjs stale --project <repo>` lists the entries whose section
+changed.
+{{/standalone}}
+Make the updates and save them; do not ask the developer to approve each one. For each entry:
 
 - **`source: guessed`:** read the section again. Update the value if the text now says
-  something different, and always update `sha256` (from the tool) and `date`.
+  something different, and always update
+  `sha256` and `date`, getting the SHA the same way as above.
 - **`source: person`:** this was a team choice. If the section still agrees with the entry,
   even with new or reworded text, update only `sha256` and `date`. If it now says something
   different, change nothing and ask which one developers should follow, naming both: "The

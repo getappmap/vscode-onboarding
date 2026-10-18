@@ -1,0 +1,28 @@
+# Push a tag like v0.0.2 to publish a GitHub release with the extension and the standalone skills.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run package
+      - run: npm run vsix
+      - run: npm run skills:zip
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" onboarding-skills.zip *.vsix --generate-notes

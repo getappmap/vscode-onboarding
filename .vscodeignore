@@ -1,4 +1,5 @@
 .vscode/**
+.github/**
 .vscode-test/**
 out/**
 node_modules/**
@@ -6,7 +7,6 @@ src/**
 .gitignore
 .yarnrc
 esbuild.js
-vsc-extension-quickstart.md
 **/tsconfig.json
 **/eslint.config.mjs
 **/*.map
@@ -17,3 +17,12 @@ CLAUDE.md
 test-fixtures/**
 .nvmrc
 showcases/**
+skills/**
+skills.build.js
+# The standalone skills and their command line are published separately.
+dist/onboard.mjs
+dist/skills/standalone/**
+onboarding-skills.zip
+CONTRIBUTING.md
+docs/**
+TODO.md

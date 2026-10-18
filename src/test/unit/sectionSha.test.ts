@@ -5,7 +5,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { Entry } from '../../manifest/manifest';
 import { headingLine, isStale, sectionSha, sectionText, shaOf } from '../../manifest/sectionSha';
-import { SHOW_SECTION, StaleActions, UPDATE_SETUP_STEPS, findStale, notifyStale, staleMessage, updatePrompt } from '../../manifest/staleCheck';
+import { findStale, staleMessage, updatePrompt } from '../../manifest/staleCheck';
+import { SHOW_SECTION, StaleActions, UPDATE_SETUP_STEPS, notifyStale } from '../../report/staleNotice';
 import { holdWhileBusy, whenQuiet } from '../../util/whenQuiet';
 import { fake } from './vscode.fake';
 
@@ -79,15 +80,15 @@ suite('README check', () => {
     fs.writeFileSync(path.join(folder, 'README.md'), README.replace(from, to));
 
   test('finds the entries whose README section changed', async () => {
-    assert.deepStrictEqual(await findStale(entries, vscode.Uri.file(folder)), []);
+    assert.deepStrictEqual(await findStale(entries, folder), []);
     edit('docker-compose up', 'podman compose up');
-    assert.deepStrictEqual((await findStale(entries, vscode.Uri.file(folder))).map(e => e.id), ['docker']);
+    assert.deepStrictEqual((await findStale(entries, folder)).map(e => e.id), ['docker']);
   });
 
   test('a file outside the project, or missing, counts as changed but is never read', async () => {
     const outside: Entry = { id: 'x', check: 'x', from: { source: 'guessed', file: '../../etc/hosts', section: '# x', sha256: 'abcdef12' } };
     const missing: Entry = { id: 'y', check: 'x', from: { source: 'guessed', file: 'NOPE.md', section: '# x', sha256: 'abcdef12' } };
-    assert.deepStrictEqual((await findStale([outside, missing], vscode.Uri.file(folder))).map(e => e.id), ['x', 'y']);
+    assert.deepStrictEqual((await findStale([outside, missing], folder)).map(e => e.id), ['x', 'y']);
   });
 
   /** Actions that record what was asked of them. */

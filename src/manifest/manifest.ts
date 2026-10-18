@@ -1,4 +1,5 @@
-import * as vscode from 'vscode';
+import * as fs from 'fs/promises';
+import * as path from 'path';
 import { isMap as isYamlMap, isSeq as isYamlSeq, parseDocument } from 'yaml';
 import { PRESET_NAMES } from '../setup/presets';
 
@@ -68,17 +69,17 @@ export class ManifestError extends Error {
 }
 
 /** Reads onboarding.yaml from the folder. Undefined when there is none. */
-export async function readManifest(folder: vscode.Uri): Promise<Manifest | undefined> {
-  let bytes: Uint8Array;
+export async function readManifest(folder: string): Promise<Manifest | undefined> {
+  let text: string;
   try {
-    bytes = await vscode.workspace.fs.readFile(vscode.Uri.joinPath(folder, MANIFEST_FILE));
+    text = await fs.readFile(path.join(folder, MANIFEST_FILE), 'utf8');
   } catch (err) {
-    if (err instanceof vscode.FileSystemError && err.code === 'FileNotFound') {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
       return undefined;
     }
     throw err;
   }
-  return parseManifest(new TextDecoder().decode(bytes), MANIFEST_FILE);
+  return parseManifest(text, MANIFEST_FILE);
 }
 
 /**

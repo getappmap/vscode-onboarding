@@ -1,9 +1,12 @@
-# Change Log
+# Changelog
 
-All notable changes to the "project-onboarding" extension will be documented in this file.
-
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+All notable changes to Onboarding are listed here.
 
 ## [Unreleased]
 
-- Initial release
+## [1.0.0]
+
+- First release: run `onboarding.yaml` setup in VS Code, with an Onboarding list, a status
+  view, and help from GitHub Copilot.
+- Three skills for Copilot, also published for Claude Code and Copilot CLI as
+  `onboarding-skills.zip`.

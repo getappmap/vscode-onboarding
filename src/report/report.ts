@@ -38,17 +38,25 @@ export const REPORT_VIEW = 'onboarding.report';
 /** Opens an entry's page in the status view. Takes the entry id. */
 export const SHOW_ENTRY = 'onboarding.showEntry';
 
+/** Stops the setup run going now. Its button shows on the report view, and on the running row. */
+export const STOP_SETUP = 'onboarding.stopSetup';
+
+/** Runs one entry, and any entry it depends on that is not proven. Takes the row. */
+export const RUN_ENTRY = 'onboarding.runEntry';
+
 /**
- * Runs setup with its progress in two places: a notification, which can cancel the run, and
- * the report view, which also marks the Onboarding icon in the sidebar so people know where
- * the results will be.
+ * Runs setup with its progress in two places: the status bar, and the report view, which also
+ * marks the Onboarding icon in the sidebar so people know where the results will be.
+ * Not a notification: that covers the Copilot chat box, and its only button is Cancel.
+ * The Stop button on the report view cancels the run through the token.
  */
 export function withSetupProgress<T>(
+  token: vscode.CancellationToken,
   task: (progress: vscode.Progress<{ message?: string; increment?: number }>, token: vscode.CancellationToken) => Thenable<T>,
 ): Thenable<T> {
   return vscode.window.withProgress({ location: { viewId: REPORT_VIEW } }, () =>
     vscode.window.withProgress(
-      { location: vscode.ProgressLocation.Notification, title: 'Onboarding', cancellable: true }, task));
+      { location: vscode.ProgressLocation.Window, title: 'Onboarding' }, progress => task(progress, token)));
 }
 
 const STATE_TEXT: Record<EntryState, string> = {
@@ -136,13 +144,15 @@ export function allOf(...reporters: SetupReporter[]): SetupReporter {
 
 /**
  * The developer-facing report: the "Onboarding" list in its own Activity Bar view with one row per entry,
- * plus a progress notification while setup runs, and a summary when it ends.
+ * plus progress while setup runs, and a summary when it ends. A run of some entries, such as
+ * one row's Run button, changes only their rows.
  */
 export class SetupReport implements SetupReporter, vscode.TreeDataProvider<EntryStatus> {
   private readonly changed = new vscode.EventEmitter<EntryStatus | undefined>();
   readonly onDidChangeTreeData = this.changed.event;
 
   private statuses: EntryStatus[] = [];
+  private runIds: string[] = [];   // the entries in the run going now, in order
   private progress?: vscode.Progress<{ message?: string; increment?: number }>;
 
   /** Shows rows without running anything. */
@@ -162,7 +172,12 @@ export class SetupReport implements SetupReporter, vscode.TreeDataProvider<Entry
   }
 
   begin(entries: Entry[]): void {
-    this.show(entries.map(e => ({ id: e.id, title: e.title ?? e.id, state: 'waiting' })));
+    this.runIds = entries.map(e => e.id);
+    const shown = new Set(this.statuses.map(s => s.id));
+    const partial = this.runIds.every(id => shown.has(id)) && this.runIds.length < shown.size;
+    this.show(partial
+      ? this.statuses.map(s => this.runIds.includes(s.id) ? { id: s.id, title: s.title, state: 'waiting' } : s)
+      : entries.map(e => ({ id: e.id, title: e.title ?? e.id, state: 'waiting' })));
   }
 
   update(status: EntryStatus): void {
@@ -173,9 +188,10 @@ export class SetupReport implements SetupReporter, vscode.TreeDataProvider<Entry
     this.statuses[index] = status;
     this.changed.fire(undefined);
 
-    const total = this.statuses.length;
+    const total = this.runIds.length;
     if (RUNNING.includes(status.state)) {
-      this.progress?.report({ message: `${STATE_TEXT[status.state]} ${status.title}, ${index + 1} of ${total}` });
+      const place = this.runIds.indexOf(status.id) + 1;
+      this.progress?.report({ message: `${STATE_TEXT[status.state]} ${status.title}, ${place} of ${total}` });
     } else {
       this.progress?.report({ increment: 100 / total });
     }
@@ -183,7 +199,10 @@ export class SetupReport implements SetupReporter, vscode.TreeDataProvider<Entry
 
   end(statuses: EntryStatus[]): void {
     this.progress = undefined;
-    this.show(statuses);
+    this.runIds = [];
+    const ended = new Map(statuses.map(s => [s.id, s]));
+    const partial = statuses.length < this.statuses.length && statuses.every(s => this.statuses.some(r => r.id === s.id));
+    this.show(partial ? this.statuses.map(s => ended.get(s.id) ?? s) : statuses);
 
     // Clicking a notification's text does nothing, so each one has a button to the report.
     const ready = statuses.filter(s => s.state === 'ready').length;

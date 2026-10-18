@@ -3,19 +3,23 @@ import { getAgentHost } from './agent/agentHost';
 import { SKILLS, troubleshootPrompt } from './agent/prompts';
 import { Entry, MANIFEST_FILE, Manifest, combineLayers, entryLine, forPlatform, readManifest } from './manifest/manifest';
 import { ManifestMcpProvider, PROVIDER_ID } from './connections/mcpServers';
-import { EntryStatus, SHOW_ENTRY, SetupReport, allOf, rowsBeforeRun, withSetupProgress } from './report/report';
+import { EntryStatus, RUN_ENTRY, SHOW_ENTRY, STOP_SETUP, SetupReport, allOf, rowsBeforeRun, withSetupProgress } from './report/report';
 import { OUTPUT_CHANNEL, SetupOutput } from './report/setupOutput';
 import { StatusView } from './report/statusView';
 import { STATUS_DIR, STATUS_FILE, StatusRecorder, emptyStatus, provenFrom, readStatus } from './report/statusFile';
-import { findStale, notifyStale } from './manifest/staleCheck';
+import { findStale } from './manifest/staleCheck';
+import { notifyStale } from './report/staleNotice';
 import { headingLine } from './manifest/sectionSha';
 import { holdWhileBusy, whenQuiet } from './util/whenQuiet';
-import { runSetup } from './setup/runSetup';
+import { runSetup, withDependencies } from './setup/runSetup';
 import { CheckEntriesTool } from './tools/checkEntriesTool';
 import { SectionShaTool } from './tools/sectionShaTool';
-import { fetchOrgSettings, readSecret } from './company/company';
+import { fetchOrgSettings, readSecret as readSecretWith } from './company/company';
 
 const RUN_FIX = 'Run Fix';
+
+const setting = (name: string) => vscode.workspace.getConfiguration('onboarding').get<string>(name, '');
+const readSecret = (path: string) => readSecretWith(path, setting('secretCommand'));
 
 export async function activate(context: vscode.ExtensionContext): Promise<void> {
   // Register the list before anything else, with nothing to wait for first: until then,
@@ -34,7 +38,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   void setViewState(folder ? 'loading' : 'no-folder');
   let plan: Manifest = { entries: [], mcpServers: [] };
   let projectIds = new Set<string>();   // entries in the project's onboarding.yaml, not only the Org or Team layer
-  let running = false;
+  let running: vscode.CancellationTokenSource | undefined; // set while setup runs; cancels it
 
   const mcp = new ManifestMcpProvider(readSecret, folder?.uri);
   const staleShown = new Set<string>();
@@ -51,7 +55,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return;
     }
     try {
-      const stale = await findStale(plan.entries, folder.uri);
+      const stale = await findStale(plan.entries, folder.uri.fsPath);
       await notifyStale(stale, { openChat: prompt => getAgentHost().openChat(prompt), openSection }, staleShown);
     } catch (err) {
       log.warn(`Could not check the README sections behind ${MANIFEST_FILE}: ${(err as Error).message}`);
@@ -77,7 +81,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     let project: Manifest | undefined;
     let invalid = false;
     try {
-      project = await readManifest(folder.uri);
+      project = await readManifest(folder.uri.fsPath);
     } catch (err) {
       invalid = true;
       log.error((err as Error).message);
@@ -87,7 +91,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
     let layers: Manifest[] = [];
     try {
-      layers = (await fetchOrgSettings(project?.team)).layers;
+      layers = (await fetchOrgSettings(project?.team, setting('orgSettingsUrl'))).layers;
     } catch (err) {
       log.warn(`Org and Team settings not loaded, so only ${MANIFEST_FILE} is used: ${(err as Error).message}`);
     }
@@ -119,8 +123,11 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     return choice === RUN_FIX;
   };
 
-  /** Runs setup and returns each entry's result, or undefined when it could not start. */
-  const runProjectSetup = async (reprove: boolean): Promise<EntryStatus[] | undefined> => {
+  /**
+   * Runs setup and returns each entry's result, or undefined when it could not start.
+   * With `only`, runs that entry, proving it again, and the entries it depends on.
+   */
+  const runProjectSetup = async (reprove: boolean, only?: string): Promise<EntryStatus[] | undefined> => {
     if (!folder) {
       void vscode.window.showInformationMessage('Open a project folder to set it up.');
       return undefined;
@@ -146,18 +153,20 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return undefined;
     }
 
-    running = true;
+    const stop = running = new vscode.CancellationTokenSource();
+    void vscode.commands.executeCommand('setContext', 'onboarding.running', true);
     const status = await readStatus(folder.uri.fsPath) ?? emptyStatus();
     const proven = provenFrom(status);
+    const entries = only ? withDependencies(plan.entries, only) : plan.entries;
     const recorder = new StatusRecorder(folder.uri.fsPath, status, proven,
-      err => log.error(`Could not write ${STATUS_DIR}/${STATUS_FILE}: ${err.message}`));
+      err => log.error(`Could not write ${STATUS_DIR}/${STATUS_FILE}: ${err.message}`), undefined, !!only);
     try {
-      const statuses = await withSetupProgress(
+      const statuses = await withSetupProgress(stop.token,
         (progress, token) => {
           report.attachProgress(progress);
-          return runSetup(plan.entries, {
-            folder: folder.uri, readSecrets, reporter: allOf(report, recorder, setupOutput), output: setupOutput,
-            token, proven, reprove,
+          return runSetup(entries, {
+            folder: folder.uri.fsPath, readSecrets, reporter: allOf(report, recorder, setupOutput), output: setupOutput,
+            token, proven, reprove: only ? new Set([only]) : reprove,
             askToFix: vscode.workspace.getConfiguration('onboarding').get('askBeforeFixing', false) ? askToFix : undefined,
           });
         });
@@ -168,7 +177,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
       return undefined;
     } finally {
       await recorder.saved();
-      running = false;
+      stop.dispose();
+      running = undefined;
+      void vscode.commands.executeCommand('setContext', 'onboarding.running', false);
       await showLastResults();
     }
   };
@@ -204,6 +215,9 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     vscode.lm.registerTool(SectionShaTool.NAME, new SectionShaTool(folder?.uri, () => agentHold.busy())),
     vscode.commands.registerCommand('onboarding.runSetup', () => runProjectSetup(false)),
     vscode.commands.registerCommand('onboarding.reproveSetup', () => runProjectSetup(true)),
+    vscode.commands.registerCommand(STOP_SETUP, () => running?.cancel()),
+    // The button on a row passes that row.
+    vscode.commands.registerCommand(RUN_ENTRY, (status: EntryStatus) => runProjectSetup(false, status.id)),
     vscode.commands.registerCommand('onboarding.askCopilot', () => askCopilot(report.notReady())),
     // The button on a row passes that row.
     vscode.commands.registerCommand('onboarding.askCopilotAboutEntry', (status: EntryStatus) => askCopilot([status])),

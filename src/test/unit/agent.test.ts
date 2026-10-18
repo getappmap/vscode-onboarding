@@ -7,9 +7,9 @@ suite('Copilot: opening the chat', () => {
   setup(() => fake.reset());
 
   test('starts a new session in agent mode and sends the prompt', async () => {
-    await new CopilotAgentHost().openChat('/onboarding-troubleshooter help');
+    await new CopilotAgentHost().openChat('/onboarding-setup help');
     assert.deepStrictEqual(fake.executed, ['workbench.action.chat.newChat', 'workbench.action.chat.open']);
-    assert.deepStrictEqual(fake.executedArgs[1], [{ query: '/onboarding-troubleshooter help', isPartialQuery: false, mode: 'agent' }]);
+    assert.deepStrictEqual(fake.executedArgs[1], [{ query: '/onboarding-setup help', isPartialQuery: false, mode: 'agent' }]);
   });
 
   test('says so when Copilot Chat cannot be opened', async () => {
@@ -38,7 +38,7 @@ suite('Copilot: the troubleshooting prompt', () => {
     }]);
 
     assert.strictEqual(prompt, [
-      '/onboarding-troubleshooter Onboarding setup could not finish "Logs reach Splunk" in this repository. Help me find out why and fix it.',
+      '/onboarding-setup Onboarding setup could not finish "Logs reach Splunk" in this repository. Help me find out why and fix it.',
       '## Logs reach Splunk failed',
       'What happened:\n\n```text\nNo value for SPLUNK_HEC_TOKEN in the secret store.\n```',
       'How onboarding.yaml defines it:\n\n```yaml\n- id: splunk\n  title: Logs reach Splunk\n'
@@ -52,7 +52,7 @@ suite('Copilot: the troubleshooting prompt', () => {
       { status: { id: 'jdk', title: 'Java 21', state: 'failed', detail: 'Its check failed.' }, entry: { id: 'jdk', uses: 'jdk' } },
       { status: { id: 'gone', title: 'gone', state: 'skipped', detail: 'Waits for jdk, which is not ready.' } },
     ]);
-    assert.ok(prompt.startsWith('/onboarding-troubleshooter Onboarding setup could not finish "Java 21", "gone" in this repository.'));
+    assert.ok(prompt.startsWith('/onboarding-setup Onboarding setup could not finish "Java 21", "gone" in this repository.'));
     assert.ok(prompt.includes('## Java 21 failed'));
     assert.ok(prompt.includes('## gone was skipped\n\nWhat happened:\n\n```text\nWaits for jdk, which is not ready.\n```'));
     assert.ok(prompt.endsWith('Waits for jdk, which is not ready.\n```'), 'no definition for an entry not in the plan');

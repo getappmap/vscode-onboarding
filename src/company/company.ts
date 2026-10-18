@@ -1,5 +1,4 @@
 import { spawn } from 'child_process';
-import * as vscode from 'vscode';
 import { Manifest, validateManifest } from '../manifest/manifest';
 import { pickShell } from '../setup/runCommand';
 
@@ -11,20 +10,21 @@ const SETTINGS_TIMEOUT_MS = 10_000;
 const SECRET_TIMEOUT_MS = 60_000;
 
 /**
- * Fetches the Org and Team layers from the company settings server, named by the
- * onboarding.orgSettingsUrl setting. It answers GET <url>?team=<team> with JSON:
+ * Fetches the Org and Team layers from the company settings server at `url`: the
+ * onboarding.orgSettingsUrl setting, or ONBOARDING_ORG_SETTINGS_URL outside VS Code.
+ * It answers GET <url>?team=<team> with JSON:
  *   { "org": <manifest>, "team": <manifest or null> }
  * No server set means no layers. Anything else that goes wrong is an error, which the
  * caller reports before carrying on with the project's manifest alone.
  */
-export async function fetchOrgSettings(team: string | undefined): Promise<OrgSettings> {
-  const url = vscode.workspace.getConfiguration('onboarding').get<string>('orgSettingsUrl', '').trim();
+export async function fetchOrgSettings(team: string | undefined, url: string): Promise<OrgSettings> {
+  url = url.trim();
   if (!url) {
     return { layers: [] };
   }
   const address = new URL(url);
   if (address.protocol !== 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(address.hostname)) {
-    throw new Error(`onboarding.orgSettingsUrl must use https: ${url}`);
+    throw new Error(`The Org settings server must use https: ${url}`);
   }
   if (team) {
     address.searchParams.set('team', team);
@@ -45,14 +45,16 @@ export async function fetchOrgSettings(team: string | undefined): Promise<OrgSet
 
 /**
  * Reads one secret with the secret store's own command line tool, signed in as the developer.
- * Runs the onboarding.secretCommand setting, where {path} marks the secret's path; the path
+ * Runs `template`, the onboarding.secretCommand setting (ONBOARDING_SECRET_COMMAND outside
+ * VS Code), where {path} marks the secret's path; the path
  * reaches the command as an environment variable, so no path can break its quoting. Returns
  * standard output, less one final line break.
  */
-export async function readSecret(path: string): Promise<string | undefined> {
-  const template = vscode.workspace.getConfiguration('onboarding').get<string>('secretCommand', '').trim();
+export async function readSecret(path: string, template: string): Promise<string | undefined> {
+  template = template.trim();
   if (!template) {
-    throw new Error('no secret store is set up. Set onboarding.secretCommand, for example `vault kv get -field=value {path}`');
+    throw new Error('no secret store is set up. Set onboarding.secretCommand in VS Code, or ONBOARDING_SECRET_COMMAND, '
+      + 'for example `vault kv get -field=value {path}`');
   }
   const pathVariable = process.platform === 'win32' ? '$env:ONBOARDING_SECRET_PATH' : '"$ONBOARDING_SECRET_PATH"';
   const script = template.split('{path}').join(pathVariable);
@@ -69,7 +71,7 @@ export async function readSecret(path: string): Promise<string | undefined> {
     const err: Buffer[] = [];
     child.stdout.on('data', (chunk: Buffer) => out.push(chunk));
     child.stderr.on('data', (chunk: Buffer) => err.push(chunk));
-    child.on('error', e => reject(new Error(`could not run onboarding.secretCommand: ${e.message}`)));
+    child.on('error', e => reject(new Error(`could not run the secret command: ${e.message}`)));
     child.on('close', code => {
       if (code !== 0) {
         // Only the error stream is shown: standard output may hold part of a secret.

@@ -2,7 +2,6 @@ import * as assert from 'assert';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import * as vscode from 'vscode';
 import {
   Manifest, ManifestError, combineLayers, currentPlatform, entryLine, forPlatform, parseManifest, readManifest, validateManifest,
 } from '../../manifest/manifest';
@@ -24,7 +23,7 @@ function assertProblem(problems: string[], text: string): void {
 
 suite('Manifest: reading', () => {
   test('reads the sample project manifest', async () => {
-    const folder = vscode.Uri.file(path.join(__dirname, '..', '..', '..', 'test-fixtures', 'sample-project'));
+    const folder = path.join(__dirname, '..', '..', '..', 'test-fixtures', 'sample-project');
     const manifest = await readManifest(folder);
 
     assert.ok(manifest);
@@ -52,7 +51,7 @@ suite('Manifest: reading', () => {
   test('returns undefined when the folder has no manifest', async () => {
     const empty = fs.mkdtempSync(path.join(os.tmpdir(), 'onboarding-'));
     try {
-      assert.strictEqual(await readManifest(vscode.Uri.file(empty)), undefined);
+      assert.strictEqual(await readManifest(empty), undefined);
     } finally {
       fs.rmSync(empty, { recursive: true });
     }
