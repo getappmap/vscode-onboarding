@@ -45,7 +45,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   const openSection = async (file: string, section: string) => {
     const uri = vscode.Uri.joinPath(folder!.uri, file);
-    const line = headingLine(Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf8'), section) ?? 0;
+    const line = headingLine(Buffer.from(await vscode.workspace.fs.readFile(uri)).toString('utf8'), section, file) ?? 0;
     await vscode.window.showTextDocument(uri, { selection: new vscode.Range(line, 0, line, 0) });
   };
 

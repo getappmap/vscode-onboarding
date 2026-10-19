@@ -13,6 +13,11 @@ from: { source: guessed, file: README.md, section: "## Run locally", sha256: bef
 In the commands below, `<skill>` is the full path of this skill's folder and `<repo>` is the repository's root
 folder, the one that holds `onboarding.yaml`. Always pass `--project <repo>`.
 
+Running `node` inside the repository goes through its version manager. With mise or Volta, a
+version pinned in `.tool-versions`, `.nvmrc` or package.json may be installed first, before the
+script runs. Tell the developer if that happens. If the script says the Node is too old, run it
+with a newer `node` given by its full path.
+
 {{/standalone}}
 ## Working with the developer
 
@@ -27,12 +32,15 @@ The developer is not expected to know how `onboarding.yaml` works.
 
 ## Reading a section
 
-1. Read the whole section, down to the next heading of the same or higher level. A line starting
-   with `#` inside a code block is a shell comment, not a heading.
+1. Read the whole section, down to the next heading of the same or higher level. In Markdown, a
+   line starting with `#` inside a code block is a shell comment, not a heading. In a `.rst` file,
+   a title is a line with an underline of `=`, `-`, `~` or similar below it. Each underline style
+   is a level, in the order the file first uses it. Indented lines, such as a code block after
+   `::`, are never titles.
 2. Pull out only what a developer must have or do: tools and versions, install commands,
    services, environment variables, and secrets (record the secret's store path, never a value).
 3. Record each value with `source: guessed`. Get the SHA from {{sha}}, giving the file and the
-   heading exactly as written. Never compute a SHA yourself. Use today's date.
+   heading exactly as written (for a `.rst` title, without its underline). Never compute a SHA yourself. Use today's date.
 
 ## When the text behind a value has changed
 

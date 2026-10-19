@@ -9,6 +9,11 @@ it describes every field.
 
 In the commands below, `<skill>` is the full path of this skill's folder and `<repo>` is the repository's root
 folder, the one that holds `onboarding.yaml`. Always pass `--project <repo>`.
+
+Running `node` inside the repository goes through its version manager. With mise or Volta, a
+version pinned in `.tool-versions`, `.nvmrc` or package.json may be installed first, before the
+script runs. Tell the developer if that happens. If the script says the Node is too old, run it
+with a newer `node` given by its full path.
 {{/standalone}}
 
 ## Working with the developer
@@ -42,7 +47,9 @@ The developer is not expected to know how `onboarding.yaml` works.
    {{check}} to see which entries already pass on this computer, and explain any that fail.
    Do not run fixes yourself.
 7. **Tell the person what you set up**, in a few plain lines: the setup steps, the files you
-   changed besides the manifest, and any decision you still need from them.
+   changed besides the manifest, and any decision you still need from them. Say that no fix
+   has been run yet, and suggest running setup with the `onboarding-setup` skill before they
+   commit the manifest: fixes often fail in ways a check cannot show.
 
 ## CI shows what the project needs, not what a developer does
 
@@ -89,6 +96,10 @@ should take a few seconds.
 - **A first build or test run is its own entry**, at the end, and only if the project's setup
   instructions ask for one. Run the smallest version: one test file, or a compile without tests.
 - **A `check` changes nothing and needs no network**, unless the entry is about a network service.
+- **For a service, `prove` connects the way the project does**: the same host, port and
+  credentials. Then it confirms it reached the project's server, not another one on the same
+  port, for example by asking for a database only the project creates. Add a `troubleshooting`
+  note for port clashes: `lsof -nP -iTCP:<port> -sTCP:LISTEN` shows what holds the port.
 
 ## Say exactly how each entry is satisfied
 

@@ -4,7 +4,7 @@ import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { Entry } from '../../manifest/manifest';
-import { headingLine, isStale, sectionSha, sectionText, shaOf } from '../../manifest/sectionSha';
+import { headingLine, isStale, sectionSha, sectionShaOfFile, sectionText, shaOf } from '../../manifest/sectionSha';
 import { findStale, staleMessage, updatePrompt } from '../../manifest/staleCheck';
 import { SHOW_SECTION, StaleActions, UPDATE_SETUP_STEPS, notifyStale } from '../../report/staleNotice';
 import { holdWhileBusy, whenQuiet } from '../../util/whenQuiet';
@@ -57,6 +57,93 @@ suite('README sections', () => {
     assert.strictEqual(isStale(from, README.replace('## Run locally', '## Running')), true);
     assert.strictEqual(isStale(from, README.replace('docker-compose up', 'podman compose up')), false, 'another section');
     assert.strictEqual(isStale({ source: 'person' }, ''), false, 'no file named');
+  });
+});
+
+const RST = [
+  '==========',
+  'Oscar docs',
+  '==========',
+  'About it.',
+  '',
+  'Setting up the development environment',
+  '======================================',
+  '',
+  'Install Python. Then run::',
+  '',
+  '    make install',
+  '    Not a title',
+  '    -----------',
+  '',
+  'Fixing issues',
+  '-------------',
+  'brew install libpq',
+  '',
+  'Running the tests',
+  '=================',
+  'make test',
+].join('\n');
+
+suite('reStructuredText sections', () => {
+  const file = 'docs/setup.rst';
+
+  test('a section runs to the next title of the same or higher level', () => {
+    assert.strictEqual(sectionText(RST, 'Setting up the development environment', file), [
+      'Install Python. Then run::', '', '    make install', '    Not a title', '    -----------', '',
+      'Fixing issues', '-------------', 'brew install libpq',
+    ].join('\n'));
+    assert.strictEqual(sectionText(RST, 'Fixing issues', file), 'brew install libpq');
+    assert.strictEqual(sectionText(RST, 'Running the tests', file), 'make test');
+  });
+
+  test('levels follow the order the file first uses each underline', () => {
+    // The overline title comes first, so it is level 1. A plain = underline is another
+    // style, level 2, so the = titles below stay inside it.
+    assert.ok(sectionText(RST, 'Oscar docs', file)!.endsWith('make test'));
+    // Here - comes before =, so a = title is lower and stays inside the - section.
+    const flipped = ['Top', '---', 'a', '', 'Inner', '=====', 'b', '', 'Next', '----', 'c'].join('\n');
+    assert.strictEqual(sectionText(flipped, 'Top', file), ['a', '', 'Inner', '=====', 'b'].join('\n'));
+  });
+
+  test('finds the line of a title, with or without an overline', () => {
+    assert.strictEqual(headingLine(RST, 'Oscar docs', file), 1);
+    assert.strictEqual(headingLine(RST, 'Setting up the development environment', file), 5);
+  });
+
+  test('an underline-looking line in a literal block is not a title', () => {
+    assert.strictEqual(sectionText(RST, 'Not a title', file), undefined);
+    assert.strictEqual(headingLine(RST, 'Not a title', file), undefined);
+  });
+
+  test('a missing or Markdown-style title has no section', () => {
+    assert.strictEqual(sectionText(RST, 'Deploying', file), undefined);
+    assert.strictEqual(sectionText(RST, '## Running the tests', file), undefined);
+    assert.strictEqual(sectionText(RST, 'Running the tests', 'README.md'), undefined, 'read as Markdown');
+  });
+
+  test('a value is stale when its rst section changed', () => {
+    const from = { source: 'guessed' as const, file, section: 'Fixing issues', sha256: sectionSha(RST, 'Fixing issues', file) };
+    assert.match(from.sha256!, /^[0-9a-f]{8}$/);
+    assert.strictEqual(isStale(from, RST), false);
+    assert.strictEqual(isStale(from, RST.replace('libpq', 'postgresql')), true);
+    assert.strictEqual(isStale(from, RST.replace('make test', 'tox')), false, 'another section');
+  });
+
+  test('the Markdown SHA is unchanged', () => {
+    assert.strictEqual(sectionSha(README, '## Run locally'), '8dcf2c5c');
+    assert.strictEqual(sectionSha(README, '## Run locally', 'README.md'), '8dcf2c5c');
+  });
+
+  test('the error for a missing rst title names the rst form', async () => {
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'onboarding-rst-'));
+    try {
+      fs.writeFileSync(path.join(folder, 'setup.rst'), RST);
+      assert.strictEqual(await sectionShaOfFile(folder, 'setup.rst', 'Fixing issues'), sectionSha(RST, 'Fixing issues', file));
+      await assert.rejects(sectionShaOfFile(folder, 'setup.rst', '## Fixing issues'),
+        /There is no title "## Fixing issues" in setup\.rst\. Give the title exactly as written, without its underline/);
+    } finally {
+      fs.rmSync(folder, { recursive: true, force: true });
+    }
   });
 });
 

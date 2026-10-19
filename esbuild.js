@@ -81,8 +81,10 @@ async function main() {
 			entryPoints: ['src/cli/bin.ts'],
 			format: 'esm',
 			outfile: 'dist/onboard.mjs',
-			// The skills copy this one file, so it carries no source map.
+			// The skills copy this one file, so it carries no source map. It is never minified, so
+			// people can read what it does before they install the skills.
 			sourcemap: false,
+			minify: false,
 			// Bundled CommonJS packages call require(); give ESM one.
 			banner: { js: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);" },
 			plugins: [esbuildProblemMatcherPlugin, skillsPlugin],

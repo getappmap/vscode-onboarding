@@ -85,7 +85,7 @@ Onboarding gives Copilot agent mode three skills and two tools:
 
 The same three skills work in Claude Code, Copilot CLI and other agents that read `SKILL.md`
 folders. Each skill folder carries a small Node script, `scripts/onboard.mjs`, that does what
-the extension does. You need Node.js 24 or later.
+the extension does. You need Node.js 18 or later.
 
 ### Install the skills
 

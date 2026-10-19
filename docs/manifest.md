@@ -98,7 +98,7 @@ from: { source: guessed, file: README.md, section: "## Building", sha256: 9c2e41
 | Field | What it is |
 |---|---|
 | `source` | `guessed`: read from the README by an agent, and updated when the text changes. `person`: a choice the team made, which Onboarding never changes on its own |
-| `file`, `section` | The file, and the heading exactly as written |
+| `file`, `section` | The file, and the heading exactly as written. A Markdown heading keeps its `#` marks. A `.rst` title is written without its underline |
 | `sha256` | The SHA of that section when the value was taken. Onboarding compares it with the section |
 | `date` | When the value was taken, for people. Onboarding does not use it |
 

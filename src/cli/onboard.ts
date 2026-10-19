@@ -1,5 +1,6 @@
 import * as path from 'path';
-import { parseArgs } from 'util';
+// A namespace import, so an old Node without parseArgs still loads the file and bin.ts can say why.
+import * as util from 'util';
 import { failureDetails } from '../agent/prompts';
 import { fetchOrgSettings, readSecret } from '../company/company';
 import { Entry, MANIFEST_FILE, Manifest, combineLayers, forPlatform, readManifest } from '../manifest/manifest';
@@ -26,7 +27,7 @@ Commands:
                            Writes .onboarding/status.yaml. Exits 1 if any entry is not ready.
   check [entry] [--json]   Run check commands only. Changes nothing.
   sha <file> <heading> [--json]
-                           The SHA of a Markdown section, for a from: field.
+                           The SHA of a Markdown or .rst section, for a from: field.
   stale                    Entries whose README section changed since it was recorded.
   status                   The last setup results on this computer.
 
@@ -45,7 +46,7 @@ export interface Io {
 export async function main(argv: string[], io: Io): Promise<number> {
   let parsed;
   try {
-    parsed = parseArgs({
+    parsed = util.parseArgs({
       args: argv,
       allowPositionals: true,
       options: {
@@ -174,7 +175,7 @@ async function check(folder: string, entryId: string | undefined, json: boolean,
     io.out(JSON.stringify(results, null, 2));
   } else {
     for (const r of results) {
-      const word = r.ready === null ? 'unknown' : r.ready ? 'ready' : 'not ready';
+      const word = r.waitsFor ? 'skipped' : r.ready === null ? 'unknown' : r.ready ? 'ready' : 'not ready';
       io.out(`${word.padEnd(10)}${r.title} (${r.id})`);
       if (r.ready !== true && r.output) {
         io.out(r.output.split('\n').map(l => `    ${l}`).join('\n'));
@@ -186,7 +187,7 @@ async function check(folder: string, entryId: string | undefined, json: boolean,
 
 async function sha(folder: string, [file, heading]: string[], json: boolean, io: Io): Promise<number> {
   if (!file || !heading) {
-    throw new Error('Give the file and the heading, such as: sha README.md "## Run locally"');
+    throw new Error('Give the file and the heading, such as: sha README.md "## Run locally". For a .rst file, give the title without its underline.');
   }
   const sha256 = await sectionShaOfFile(folder, file, heading);
   io.out(json ? JSON.stringify({ file, section: heading, sha256 }) : sha256);

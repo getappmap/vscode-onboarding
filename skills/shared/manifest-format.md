@@ -102,8 +102,8 @@ when the section has changed. It needs `file`, `section` and `sha256` to do that
 | Field | What it is |
 |---|---|
 | `source` | `guessed`: read from the README by an agent; update the value when the text changes. `person`: a choice the team made; keep the value and ask the developer which is right |
-| `file` | The Markdown file, relative to the repository folder |
-| `section` | The heading exactly as written, with its `#` marks |
+| `file` | The Markdown or `.rst` file, relative to the repository folder |
+| `section` | The heading exactly as written. In Markdown, include its `#` marks. In a `.rst` file, give the title without its underline |
 | `sha256` | The section's SHA, from Onboarding's SHA tool or command. Never compute it yourself |
 | `date` | When the value was taken, `YYYY-MM-DD`. For people; Onboarding does not use it |
 

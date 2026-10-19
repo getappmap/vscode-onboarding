@@ -14,6 +14,11 @@ result, its definition from `onboarding.yaml`, and any notes from the team.
 In the commands below, `<skill>` is the full path of this skill's folder and `<repo>` is the repository's root
 folder, the one that holds `onboarding.yaml`. Always pass `--project <repo>`: the script does
 not look at the folder it runs in.
+
+Running `node` inside the repository goes through its version manager. With mise or Volta, a
+version pinned in `.tool-versions`, `.nvmrc` or package.json may be installed first, before the
+script runs. Tell the developer if that happens. If the script says the Node is too old, run it
+with a newer `node` given by its full path.
 {{/standalone}}
 
 ## Working with the developer
