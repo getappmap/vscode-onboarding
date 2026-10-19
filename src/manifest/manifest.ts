@@ -18,7 +18,7 @@ export function currentPlatform(platform: NodeJS.Platform = process.platform): P
 
 /** Where a value came from. Decides whether the extension may change it. */
 export interface Provenance {
-  source: 'person' | 'reference' | 'guessed' | 'confirmed';
+  source: 'person' | 'guessed';
   file?: string;
   section?: string;
   sha256?: string;
@@ -113,7 +113,7 @@ export function validateManifest(data: unknown, source = MANIFEST_FILE): Manifes
   if (!isMap(data)) {
     throw new ManifestError(source, ['must be a mapping with "entries" and, optionally, "team" and "mcpServers"']);
   }
-  v.onlyKeys(data, ['team', 'entries', 'mcpServers'], 'top level');
+  v.onlyKeys(data, FIELDS.manifest, 'top level');
 
   const entries = v.list(data.entries, 'entries').map((e, i) => readEntry(e, `entries[${i}]`, v));
   const mcpServers = v.list(data.mcpServers, 'mcpServers').map((s, i) => readServer(s, `mcpServers[${i}]`, v));
@@ -126,11 +126,17 @@ export function validateManifest(data: unknown, source = MANIFEST_FILE): Manifes
   return compact({ team: v.text(data.team, 'team'), entries, mcpServers });
 }
 
-const ENTRY_KEYS = ['id', 'title', 'uses', 'with', 'check', 'fix', 'prove', 'dependsOn', 'platforms', 'env',
-  'secrets', 'failMessage', 'troubleshooting', 'from'];
+/** The fields each part of the manifest allows. The format docs are tested against these. */
+export const FIELDS = {
+  manifest: ['team', 'entries', 'mcpServers'],
+  entry: ['id', 'title', 'uses', 'with', 'check', 'fix', 'prove', 'dependsOn', 'platforms', 'env',
+    'secrets', 'failMessage', 'troubleshooting', 'from'],
+  from: ['source', 'file', 'section', 'sha256', 'date'],
+  mcpServer: ['name', 'url', 'command', 'tokenSecret'],
+};
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const ENV_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
-const SOURCES: Provenance['source'][] = ['person', 'reference', 'guessed', 'confirmed'];
+const SOURCES: Provenance['source'][] = ['person', 'guessed'];
 
 function readEntry(data: unknown, path: string, v: Validator): Entry {
   if (!isMap(data)) {
@@ -145,7 +151,7 @@ function readEntry(data: unknown, path: string, v: Validator): Entry {
   }
   // Name the entry in every message once its id is known.
   const at = id ? `${path} (${id})` : path;
-  v.onlyKeys(data, ENTRY_KEYS, at);
+  v.onlyKeys(data, FIELDS.entry, at);
 
   const entry: Entry = compact({
     id,
@@ -200,7 +206,7 @@ function readProvenance(data: unknown, path: string, v: Validator): Provenance |
     v.problem(path, 'must be a mapping');
     return undefined;
   }
-  v.onlyKeys(data, ['source', 'file', 'section', 'sha256', 'date'], path);
+  v.onlyKeys(data, FIELDS.from, path);
   const source = v.text(data.source, `${path}.source`);
   if (!SOURCES.includes(source as Provenance['source'])) {
     v.problem(`${path}.source`, `must be one of: ${SOURCES.join(', ')}`);
@@ -224,7 +230,7 @@ function readServer(data: unknown, path: string, v: Validator): McpServerEntry {
     v.problem(path, 'needs a name');
   }
   const at = name ? `${path} (${name})` : path;
-  v.onlyKeys(data, ['name', 'url', 'command', 'tokenSecret'], at);
+  v.onlyKeys(data, FIELDS.mcpServer, at);
 
   const server: McpServerEntry = compact({
     name,

@@ -3,8 +3,13 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { parse } from 'yaml';
 import { SKILLS } from '../../agent/prompts';
+import { FIELDS, parseManifest } from '../../manifest/manifest';
+import { PRESET_NAMES } from '../../setup/presets';
 
 const root = path.join(__dirname, '..', '..', '..');
+/** The skill template folders; skills/shared/ holds files copied into each of them. */
+const templates = fs.readdirSync(path.join(root, 'skills'))
+  .filter(name => fs.existsSync(path.join(root, 'skills', name, 'SKILL.md')));
 const contributed = (JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
   .contributes.chatSkills as { path: string }[]).map(s => s.path);
 
@@ -67,7 +72,7 @@ suite('Skill templates', () => {
   });
 
   test('every template builds for both versions', () => {
-    for (const name of fs.readdirSync(path.join(root, 'skills'))) {
+    for (const name of templates) {
       const text = fs.readFileSync(path.join(root, 'skills', name, 'SKILL.md'), 'utf8');
       build.renderSkill(text, 'vscode');
       build.renderSkill(text, 'standalone');
@@ -77,9 +82,7 @@ suite('Skill templates', () => {
 
 suite('Standalone skills', () => {
   const standalone = path.join(root, 'dist', 'skills', 'standalone');
-  const names = fs.readdirSync(path.join(root, 'skills'));
-
-  for (const name of names) {
+  for (const name of templates) {
     test(name, () => {
       const dir = path.join(standalone, name);
       assert.ok(fs.existsSync(path.join(dir, 'scripts', 'onboard.mjs')), 'each skill carries its own copy of the command line');
@@ -93,4 +96,38 @@ suite('Standalone skills', () => {
         'Claude Code runs only this skill\'s own script without asking');
     });
   }
+});
+
+suite('The manifest format docs', () => {
+  const docs = {
+    'skills/shared/manifest-format.md': fs.readFileSync(path.join(root, 'skills', 'shared', 'manifest-format.md'), 'utf8'),
+    'docs/manifest.md': fs.readFileSync(path.join(root, 'docs', 'manifest.md'), 'utf8'),
+  };
+
+  for (const [file, text] of Object.entries(docs)) {
+    test(`${file} names every field and built-in item`, () => {
+      const names = [...Object.values(FIELDS).flat(), ...PRESET_NAMES];
+      const missing = names.filter(name => !new RegExp(`(\\b${name}:|\`${name}\`)`).test(text));
+      assert.deepStrictEqual(missing, [], 'add these to the doc');
+    });
+  }
+
+  test('every skill folder carries the format doc', () => {
+    for (const version of ['vscode', 'standalone']) {
+      for (const name of templates) {
+        assert.ok(fs.existsSync(path.join(root, 'dist', 'skills', version, name, 'manifest-format.md')), `${version}/${name}`);
+      }
+    }
+  });
+
+  test('the examples in docs/manifest.md are valid manifests', () => {
+    const blocks = [...docs['docs/manifest.md'].matchAll(/```yaml\n([\s\S]*?)```/g)].map(m => m[1]);
+    assert.ok(blocks.length > 0);
+    // A block may show one part: a whole manifest, the mcpServers list, or one entry's from: line.
+    const whole = (block: string) => block.startsWith('from:') ? `entries:\n  - id: example\n    check: "true"\n    ${block}`
+      : block.includes('entries:') ? block : `entries: []\n${block}`;
+    for (const block of blocks) {
+      parseManifest(whole(block));
+    }
+  });
 });

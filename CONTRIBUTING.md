@@ -184,6 +184,10 @@ read it, with markers where they differ. The build stops on any marker it does n
 
 The words for each marker are in `skills.build.js`.
 
+Files in `skills/shared/` are copied into every skill folder. `manifest-format.md` there is the
+format the skills read; a unit test checks that it, and `docs/manifest.md`, name every field the
+manifest allows.
+
 After changing `skills.build.js`, rebuild. A running `npm run watch` picks up the change on its
 next build.
 

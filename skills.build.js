@@ -3,6 +3,7 @@
 //
 //   skills/<name>/SKILL.md  ──►  dist/skills/vscode/<name>/SKILL.md      (package.json chatSkills)
 //                           └─►  dist/skills/standalone/<name>/SKILL.md  (+ scripts/onboard.mjs)
+//   skills/shared/*         ──►  copied into every skill folder in both versions
 //
 // In a template:
 //   {{check}}, {{sha}}, {{run-setup}}            replaced by the words for each version (MARKERS)
@@ -70,7 +71,8 @@ function renderSkill(text, target) {
 
 /**
  * Renders every skills/<name>/SKILL.md into dist/skills/<version>/<name>/SKILL.md, and copies
- * dist/onboard.mjs into each standalone skill, so each skill folder works on its own.
+ * the files in skills/shared/ into every skill and dist/onboard.mjs into each standalone skill,
+ * so each skill folder works on its own.
  */
 function buildSkills(root = __dirname) {
 	const source = path.join(root, 'skills');
@@ -79,6 +81,7 @@ function buildSkills(root = __dirname) {
 	if (!fs.existsSync(cli)) {
 		throw new Error('dist/onboard.mjs is missing; build it before the skills');
 	}
+	const shared = path.join(source, 'shared');
 	fs.rmSync(out, { recursive: true, force: true });
 	for (const name of fs.readdirSync(source)) {
 		const template = path.join(source, name, 'SKILL.md');
@@ -99,6 +102,7 @@ function buildSkills(root = __dirname) {
 				throw new Error(`skills/${name}/SKILL.md: ${err.message}`);
 			}
 			fs.writeFileSync(path.join(dir, 'SKILL.md'), rendered);
+			fs.cpSync(shared, dir, { recursive: true });
 			if (target === 'standalone') {
 				fs.mkdirSync(path.join(dir, 'scripts'));
 				fs.copyFileSync(cli, path.join(dir, 'scripts', 'onboard.mjs'));

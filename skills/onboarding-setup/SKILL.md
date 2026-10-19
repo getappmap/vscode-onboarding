@@ -67,6 +67,7 @@ entries that are not ready.
    Run {{run-setup}} again, and repeat from step 1 for anything still not ready.
 {{/standalone}}
 6. **Help the next person.** If the fix would help everyone, put it into `onboarding.yaml`: a
-   better `fix`, `failMessage` or `troubleshooting` note. Tell the developer what you added.
+   better `fix`, `failMessage` or `troubleshooting` note. `manifest-format.md` in this skill's
+   folder describes every field. Tell the developer what you added.
 
 Never show, copy or ask for a secret's value.
