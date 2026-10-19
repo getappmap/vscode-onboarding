@@ -3,7 +3,7 @@
   "displayName": "Onboarding",
   "description": "Set up a developer's computer for a repository: check, fix and prove each tool and credential it needs, with help from GitHub Copilot",
   "publisher": "appland",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "license": "MIT",
   "repository": {
     "type": "git",
