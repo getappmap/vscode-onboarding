@@ -39,7 +39,7 @@ entries:
     env: { NAME: value }            # plain values for the commands
     secrets: { NAME: dev/path }     # secret store paths, never values
     failMessage: <one specific next step>
-    troubleshooting: <notes for the onboarding-troubleshooter skill>
+    troubleshooting: <notes for the onboarding-setup skill>
     from: { source: guessed, file: README.md, section: "## Run locally", sha256: <8 hex>, date: <YYYY-MM-DD> }
 mcpServers:
   - { name: access, url: "https://...", tokenSecret: dev/path }   # or command: [program, args]
@@ -105,7 +105,8 @@ developer waits for all of them, so each should take a few seconds.
 1. **Read how the project is set up today.** The README's setup sections, CONTRIBUTING, `docs/`,
    setup scripts such as `bin/setup`, version files (`.ruby-version`, `.nvmrc`, package.json
    "engines" and "volta", `.tool-versions`), package files (Gemfile, package.json, go.mod,
-   build.gradle), `docker-compose.yml`, `.devcontainer/`, the CI workflows and `.env.example`.
+   build.gradle), `docker-compose.yml`, `.devcontainer/`, `.env.example`, and the CI config and
+   build scripts (see [CI shows what the project needs](#ci-shows-what-the-project-needs-not-what-a-developer-does)).
 2. **List what a developer needs**, in the order they need it: tools and their versions,
    packages, services such as a database, access and secrets, and a first build or test run.
 3. **Write one entry for each.** Follow the rules below. Read facts from the project's own
@@ -126,6 +127,22 @@ developer waits for all of them, so each should take a few seconds.
 7. **Tell the person what you set up**, in a few plain lines: the setup steps, the files you
    changed besides the manifest, and any decision you still need from them.
 
+## CI shows what the project needs, not what a developer does
+
+CI files (GitHub Actions, Travis, GitLab CI, a `Jenkinsfile`, and the build scripts they call)
+are good evidence of what the project needs: tool versions, system packages, services, and
+install commands. Use them as evidence. Do not copy CI onto the developer's computer.
+
+A developer's computer is not a CI server. It keeps its tools between runs, works on other
+projects too, and needs things CI never does, such as an editor setup or access to a staging
+system. So:
+
+- Install tools with the version manager the project uses, not the CI action that installs them.
+- Run a CI `services:` database or queue the way developers run it locally, such as with the
+  project's `docker-compose.yml`.
+- Leave out CI-only steps: caching, uploads, coverage reports, deploys, and CI's own secrets.
+- Do not turn the CI test run into a `prove`. See [Keep checks and proofs quick](#keep-checks-and-proofs-quick).
+
 ## Say exactly how each entry is satisfied
 
 A developer who sees an entry fail must know exactly what to do next. Vague setup text in a
@@ -141,7 +158,7 @@ README ("install Node", "use a recent JDK") must not be copied into the manifest
 
 2. **Use the tool the project already chose.** Before writing an entry, look for it in the
    repository: a `volta` field in package.json, `.nvmrc`, `.node-version`, `.tool-versions`,
-   `mise.toml`, `.ruby-version`, `Brewfile`, `.devcontainer/`, the CI workflow's setup steps,
+   `mise.toml`, `.ruby-version`, `Brewfile`, `.devcontainer/`, the CI setup steps,
    and the `Dockerfile`. If one is there, use that tool.
 
 3. **If the repository does not decide, ask, then write the answer into the project.** Ask
