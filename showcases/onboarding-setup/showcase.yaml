@@ -3,6 +3,7 @@ meta:
   description: How an AI agent wrote the setup steps for appmap-java, and how the Onboarding panel runs them.
   loop: false
   notes: Cut from a 16-minute screen recording made on 2026-10-13 (no audio). The full recording is not committed; only the stills and two short clips are. The recording ends while the Oracle step is still pulling its image; the final all-ready screenshot was sent separately.
+  pace: 2.92
 
 scenes:
   - id: intro
@@ -66,18 +67,18 @@ scenes:
   - id: first-run
     theme: console
     title: Run setup
-    durationMs: 28000
+    durationMs: 24400
     captions:
       - text: Now we run the setup.
-        durationMs: 5000
+        durationMs: 4348
       - text: The onboarding tool works down the list, one step at a time.
-        durationMs: 6000
+        durationMs: 5217
       - text: Each step is checked first. Only the ones that fail get fixed.
-        durationMs: 7000
+        durationMs: 6087
       - text: The Output panel shows every command and its result.
-        durationMs: 6000
+        durationMs: 5217
       - text: About twenty seconds later, all nine steps are Ready.
-        durationMs: 4000
+        durationMs: 3531
     media: { kind: video, asset: clip-first-run, alt: "The setup runs through all nine steps until each one shows Ready." }
 
   - id: ask-podman
@@ -100,7 +101,7 @@ scenes:
   - id: second-run
     theme: console
     title: Run setup again
-    durationMs: 21000
+    durationMs: 18300
     captions:
       - text: We run the setup again.
       - text: The steps that were already Ready pass their checks in a moment.
