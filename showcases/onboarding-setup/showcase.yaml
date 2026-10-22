@@ -1,9 +1,10 @@
 meta:
-  title: Setting up appmap-java with Onboarding
-  description: How an AI agent wrote the setup steps for appmap-java, and how the Onboarding panel runs them.
+  title: A better way to onboard developers
+  description: An AI agent reads a repository and writes its setup steps. The Onboarding extension for VS Code runs them, and an agent troubleshoots the steps that fail. This video shows it setting up appmap-java.
   loop: false
   notes: Cut from a 16-minute screen recording made on 2026-10-13 (no audio). The full recording is not committed; only the stills and two short clips are. The recording ends while the Oracle step is still pulling its image; the final all-ready screenshot was sent separately.
   pace: 2.92
+  embedCaptions: true
 
 scenes:
   - id: intro
@@ -28,7 +29,7 @@ scenes:
 
   - id: empty-panel
     theme: console
-    title: Start with Draft Manifest
+    title: Start with "Draft Manifest"
     captions:
       - text: To set up a new project, click "Draft Manifest".
       - text: It directs an agent to run the /onboarding-manifest-writer skill.
@@ -118,6 +119,15 @@ scenes:
       asset: all-ready
       alt: All fourteen steps show Ready. The chat shows the onboarding-troubleshooter agent's summary of how it fixed the Oracle step.
       motion: still
+  - id: recap
+    theme: console
+    title: Recap
+    captions:
+      - text: An agent writes the setup, the extension runs it, and an agent fixes what breaks.
+    media:
+      kind: graphic
+      graphic: recap
+      alt: "Three steps: 1 Draft, an agent writes onboarding.yaml; 2 Run, the extension checks and fixes each step; 3 Troubleshoot, an agent repairs what the fix couldn't and adds notes."
 
   - id: outro
     theme: statement
