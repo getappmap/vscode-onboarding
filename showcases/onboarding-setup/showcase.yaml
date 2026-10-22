@@ -121,14 +121,12 @@ scenes:
 
   - id: outro
     theme: statement
-    title: Setup is now part of the repo
-    captions:
-      - text: All of this is now committed with the code.
-      - text: The next developer just opens the repo, and runs setup.
+    title: getappmap/​vscode‑onboarding
+    captions: []
     media:
       kind: graphic
       graphic: onboarding-icon
       alt: "The Onboarding extension's icon: a clipboard with a checked list."
       frame: mark
     cta: { label: View on GitHub, url: https://github.com/getappmap/vscode-onboarding, kind: github }
-    ctaNote: github.com/getappmap/vscode-onboarding
+    durationMs: 3500
