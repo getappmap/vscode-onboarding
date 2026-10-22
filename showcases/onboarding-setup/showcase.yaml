@@ -56,7 +56,7 @@ scenes:
     title: Inside one step
     captions:
       - text: The developer can click a step to see how it works.
-      - text: If a step fails, Copilot can troubleshoot. Notes in the onboarding file hold tips for making the repair.
+      - text: If a step fails, an agent can troubleshoot it. Notes in the onboarding file hold tips for making the repair.
     media: { kind: image, asset: step-detail, alt: "The detail page for the mise step: its check and fix commands, what to do if it fails, and notes from the team.", motion: still }
 
   - id: first-run
