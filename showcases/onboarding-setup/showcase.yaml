@@ -30,17 +30,16 @@ scenes:
     theme: console
     title: Start with Draft Manifest
     captions:
-      - text: At first the repo has no onboarding.yaml, so the panel has nothing to set up.
-      - text: Clicking "Draft Manifest" starts an agent with the /onboarding-manifest-writer skill.
+      - text: To setup a new project, click "Draft Manifest".
+      - text: It directs an agent to run the /onboarding-manifest-writer skill.
     media: { kind: image, asset: empty-panel, alt: "The empty Onboarding panel with a Draft Manifest button, and the chat starting /onboarding-manifest-writer.", motion: still }
 
   - id: agent-question
     theme: console
     title: The agent asks what it can't tell
     captions:
-      - text: The agent reads the README, the CI workflows and the build files.
-      - text: When the repo doesn't say something, it asks. Here, how should developers install Java 21?
-      - text: It recommends mise, which reads a mise.toml file in the repo. We pick mise.
+      - text: The agent analyzes project files, like the README, build files, and CI workflows.
+      - text: When something is unclear, it asks you. Here, how should developers install Java 21?
     media: { kind: image, asset: agent-question, alt: "The agent asks which tool developers should use to get JDK 21, recommending mise.", motion: still }
 
   - id: manifest-drafted
@@ -48,7 +47,7 @@ scenes:
     title: Nine setup steps
     captions:
       - text: A few minutes later, onboarding.yaml lists nine steps.
-      - text: mise, Java 21, Gradle, bats and its libraries, sbt, the jars, and the sample apps for the tests.
+      - text: They cover everything from installing Java to building the sample apps that the tests need.
       - text: The agent also adds small helper scripts, and updates the README to match.
     media: { kind: image, asset: manifest-drafted, alt: "The Onboarding panel lists nine steps, all Not checked yet; the chat summarizes the files the agent changed.", motion: still }
 
@@ -91,7 +90,7 @@ scenes:
     title: Fourteen steps now
     captions:
       - text: The manifest grows to fourteen steps.
-      - text: The new ones are jq, Node, Podman, a running Podman machine, and the Oracle test database.
+      - text: The new ones include Podman and the Oracle test database.
       - text: They show Not checked yet. The old steps stay Ready.
     media: { kind: image, asset: fourteen-steps, alt: "The Onboarding panel lists fourteen steps; the five new ones show Not checked yet.", motion: still }
 
