@@ -8,9 +8,9 @@ meta:
 scenes:
   - id: intro
     theme: statement
-    title: Setting up appmap-java, step by step
+    title: A better way to onboard
     captions:
-      - text: Here's how appmap-java got its developer setup, written by a human + AI agent team and run by the Onboarding extension for VS Code.
+      - text: Agent skills and a VS Code extension get a new developer from clone to working setup.
     media:
       kind: image
       asset: all-ready
