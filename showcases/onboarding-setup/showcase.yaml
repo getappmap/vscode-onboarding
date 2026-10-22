@@ -23,7 +23,7 @@ scenes:
     theme: console
     title: What Onboarding is
     captions:
-      - text: Onboarding reads a file in the repo called onboarding.yaml, which enumerates each setup step.
+      - text: Onboarding reads a file in the repo called onboarding.yaml, which lists each setup step.
     media: { kind: graphic, graphic: how-it-works, alt: "Diagram: onboarding.yaml lists steps; each step's check runs, a failing check runs its fix, and a passing check marks the step Ready." }
 
   - id: empty-panel
