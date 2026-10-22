@@ -37,7 +37,7 @@ scenes:
 
   - id: agent-question
     theme: console
-    title: The agent asks what it can't tell
+    title: The agent inspects the project
     captions:
       - text: The agent analyzes project files, like the README, build files, and CI workflows.
       - text: When something is unclear, it asks you. Here, how should developers install Java 21?
@@ -45,7 +45,7 @@ scenes:
 
   - id: manifest-drafted
     theme: console
-    title: Nine setup steps
+    title: The agent produces the onboarding.yaml file
     captions:
       - text: A few minutes later, onboarding.yaml lists nine steps.
       - text: They cover everything from installing Java to building the sample apps that the tests need.
@@ -54,7 +54,7 @@ scenes:
 
   - id: step-detail
     theme: console
-    title: Inside one step
+    title: Each step provides status and troubleshooting
     captions:
       - text: The developer can click a step to see how it works.
       - text: If a step fails, an agent can troubleshoot it. Notes in the onboarding file hold tips for making the repair.
@@ -62,7 +62,7 @@ scenes:
 
   - id: first-run
     theme: console
-    title: Run setup
+    title: Setup is visual and interactive
     durationMs: 12300
     captions:
       - text: Now we run the setup. The tool works down the list, checking each step and fixing the ones that fail.
@@ -73,7 +73,7 @@ scenes:
 
   - id: ask-podman
     theme: console
-    title: Ask for more
+    title: You can iterate with the agent
     captions:
       - text: The agent had left out the Oracle database tests. So we ask it to include those.
       - text: And one twist. Run the database with Podman instead of Docker.
@@ -81,7 +81,7 @@ scenes:
 
   - id: fourteen-steps
     theme: console
-    title: Fourteen steps now
+    title: The agent produces an expanded step list
     captions:
       - text: The manifest grows to fourteen steps.
       - text: The new ones include Podman and the Oracle test database.
@@ -90,7 +90,7 @@ scenes:
 
   - id: second-run
     theme: console
-    title: Run setup again
+    title: Setup can be repeated as necessary
     durationMs: 9200
     captions:
       - text: We run the setup again. The old steps pass right away.
@@ -101,14 +101,14 @@ scenes:
 
   - id: oracle-step
     theme: console
-    title: The Oracle database starts
+    title: What happens when something goes wrong?
     captions:
       - text: The Oracle step pulls a large container image and starts the database.
       - text: The agent warns that this Podman machine has only 2 GB of memory, which is about what Oracle needs.
     media: { kind: image, asset: oracle-step, alt: "The Oracle step is fixing: the Output panel shows the image being copied and 'Waiting for Oracle to accept connections'.", motion: still }
   - id: troubleshoot
     theme: console
-    title: When a step fails, an agent troubleshoots
+    title: When a step fails, troubleshoot with an agent
     note: Screenshot sent by the user after the recording ended.
     captions:
       - text: That warning was right. Oracle runs out of memory, so Onboarding hands the step to its troubleshooter agent.
@@ -121,13 +121,13 @@ scenes:
       motion: still
   - id: recap
     theme: console
-    title: Recap
+    title: Now the onboarding steps live forever in the repo
     captions:
-      - text: An agent writes the setup, the extension runs it, and an agent fixes what breaks.
+      - text: The setup is committed to the repo, so every new developer who clones it gets the same working setup.
     media:
       kind: graphic
       graphic: recap
-      alt: "Three steps: 1 Draft, an agent writes onboarding.yaml; 2 Run, the extension checks and fixes each step; 3 Troubleshoot, an agent repairs what the fix couldn't and adds notes."
+      alt: "Four steps: 1 Draft, an agent writes onboarding.yaml; 2 Run, the extension checks and fixes each step; 3 Troubleshoot, an agent repairs what the fix couldn't and adds notes; 4 Commit, the setup is saved in the repo for every new developer."
 
   - id: outro
     theme: statement

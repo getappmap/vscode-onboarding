@@ -3,6 +3,7 @@ export default function Recap() {
     { n: "1", name: "Draft", text: "An agent reads the repo and writes onboarding.yaml." },
     { n: "2", name: "Run", text: "The extension checks each step and fixes the ones that fail." },
     { n: "3", name: "Troubleshoot", text: "An agent repairs what the fix couldn't, and adds notes for next time." },
+    { n: "4", name: "Commit", text: "The setup is saved in the repo, ready for every new developer." },
   ];
 
   return (
@@ -12,7 +13,7 @@ export default function Recap() {
         .rc { animation: rc-in 0.6s ease-out both; }
         .rc-row { display: flex; align-items: stretch; justify-content: center; gap: 0.8em;
                   width: 100%; height: 100%; padding: 1em; box-sizing: border-box;
-                  font-size: min(2.8cqw, 6cqh); }
+                  font-size: min(2.2cqw, 6cqh); }
         .rc-card { flex: 1; max-width: 13em; display: flex; flex-direction: column; gap: 0.5em;
                    background: var(--card); color: var(--foreground);
                    border: 2px solid var(--border, rgba(255,255,255,0.15));
@@ -25,8 +26,9 @@ export default function Recap() {
         .rc-arrow { align-self: center; font-size: 1.6em; color: var(--primary); }
         .rc-arrow::before { content: "→"; }
         @container (max-aspect-ratio: 1/1) {
-          .rc-row { flex-direction: column; align-items: center; gap: 0.5em; font-size: min(5.5cqw, 3.4cqh); }
-          .rc-card { width: 100%; max-width: 16em; align-self: center; }
+          .rc-row { flex-direction: column; align-items: center; gap: 0.2em; padding: 0.5em; font-size: min(4.8cqw, 2.3cqh); }
+          .rc-card { width: 100%; max-width: 17em; align-self: center; padding: 0.6em 0.8em; gap: 0.3em; }
+          .rc-arrow { font-size: 1.1em; }
           .rc-arrow::before { content: "↓"; }
         }
       `}</style>
