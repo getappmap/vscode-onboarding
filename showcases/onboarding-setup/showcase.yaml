@@ -30,7 +30,7 @@ scenes:
     theme: console
     title: Start with Draft Manifest
     captions:
-      - text: To setup a new project, click "Draft Manifest".
+      - text: To set up a new project, click "Draft Manifest".
       - text: It directs an agent to run the /onboarding-manifest-writer skill.
     media: { kind: image, asset: empty-panel, alt: "The empty Onboarding panel with a Draft Manifest button, and the chat starting /onboarding-manifest-writer.", motion: still }
 
@@ -56,8 +56,7 @@ scenes:
     title: Inside one step
     captions:
       - text: The developer can click a step to see how it works.
-      - text: The check is a command that passes when the tool is in place. The fix installs that tool if it's missing.
-      - text: If it fails, Copilot can troubleshoot. Notes in the onboarding file hold tips for making the repair.
+      - text: If a step fails, Copilot can troubleshoot. Notes in the onboarding file hold tips for making the repair.
     media: { kind: image, asset: step-detail, alt: "The detail page for the mise step: its check and fix commands, what to do if it fails, and notes from the team.", motion: still }
 
   - id: first-run
