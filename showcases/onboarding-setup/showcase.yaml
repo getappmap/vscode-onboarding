@@ -23,10 +23,7 @@ scenes:
     theme: console
     title: What Onboarding is
     captions:
-      - text: Onboarding reads one file in the repo, called onboarding.yaml.
-      - text: It lists every setup step. Each step has a check, and a fix.
-      - text: The panel runs each check. If it fails, it runs the fix, then checks again.
-      - text: When the check passes, the step is marked Ready.
+      - text: Onboarding reads a file in the repo called onboarding.yaml, which enumerates each setup step.
     media: { kind: graphic, graphic: how-it-works, alt: "Diagram: onboarding.yaml lists steps; each step's check runs, a failing check runs its fix, and a passing check marks the step Ready." }
 
   - id: empty-panel
