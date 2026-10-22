@@ -62,18 +62,12 @@ scenes:
   - id: first-run
     theme: console
     title: Run setup
-    durationMs: 24400
+    durationMs: 12300
     captions:
-      - text: Now we run the setup.
-        durationMs: 4348
-      - text: The onboarding tool works down the list, one step at a time.
-        durationMs: 5217
-      - text: Each step is checked first. Only the ones that fail get fixed.
-        durationMs: 6087
-      - text: The Output panel shows every command and its result.
-        durationMs: 5217
-      - text: About twenty seconds later, all nine steps are Ready.
-        durationMs: 3531
+      - text: Now we run the setup. The tool works down the list, checking each step and fixing the ones that fail.
+        durationMs: 8300
+      - text: A few seconds later, all nine steps are Ready.
+        durationMs: 4000
     media: { kind: video, asset: clip-first-run, alt: "The setup runs through all nine steps until each one shows Ready." }
 
   - id: ask-podman
@@ -90,17 +84,18 @@ scenes:
     captions:
       - text: The manifest grows to fourteen steps.
       - text: The new ones include Podman and the Oracle test database.
-      - text: They show Not checked yet. The old steps stay Ready.
+      - text: They show "Not checked yet". The old steps stay "Ready".
     media: { kind: image, asset: fourteen-steps, alt: "The Onboarding panel lists fourteen steps; the five new ones show Not checked yet.", motion: still }
 
   - id: second-run
     theme: console
     title: Run setup again
-    durationMs: 18300
+    durationMs: 9200
     captions:
-      - text: We run the setup again.
-      - text: The steps that were already Ready pass their checks in a moment.
-      - text: The new steps get fixed, one by one, until it reaches the Oracle database.
+      - text: We run the setup again. The old steps pass right away.
+        durationMs: 4000
+      - text: The new ones get fixed one by one, until it reaches the Oracle database.
+        durationMs: 5200
     media: { kind: video, asset: clip-second-run, alt: "The second setup run passes the old steps quickly and starts fixing the new ones." }
 
   - id: oracle-step
