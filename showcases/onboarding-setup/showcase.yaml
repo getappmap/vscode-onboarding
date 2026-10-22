@@ -102,19 +102,16 @@ scenes:
     theme: console
     title: The Oracle database starts
     captions:
-      - text: The Oracle step pulls a large container image, then waits for the database to accept connections.
-      - text: The notes from the team warn that the first start can take several minutes.
-      - text: The agent also warns that this Podman machine has only 2 GB of memory. Oracle needs about that much.
+      - text: The Oracle step pulls a large container image and starts the database.
+      - text: The agent warns that this Podman machine has only 2 GB of memory, which is about what Oracle needs.
     media: { kind: image, asset: oracle-step, alt: "The Oracle step is fixing: the Output panel shows the image being copied and 'Waiting for Oracle to accept connections'.", motion: still }
   - id: troubleshoot
     theme: console
     title: When a step fails, an agent troubleshoots
     note: Screenshot sent by the user after the recording ended.
     captions:
-      - text: That warning was right. Oracle ran out of memory and crashed on its first start.
-      - text: When a step can't finish, Onboarding hands it to another agent, the onboarding troubleshooter.
-      - text: It gives the Podman machine 4 GB, rebuilds the container, and runs the fix again.
-      - text: Then it writes what it learned into the notes in onboarding.yaml, for the next person.
+      - text: That warning was right. Oracle runs out of memory, so Onboarding hands the step to its troubleshooter agent.
+      - text: The agent gives Podman 4 GB, runs the fix again, and writes what it learned into the notes for the next person.
       - text: All fourteen steps are now Ready.
     media:
       kind: image
@@ -125,8 +122,12 @@ scenes:
   - id: outro
     theme: statement
     title: Setup is now part of the repo
-    support: "Committed: onboarding.yaml, mise.toml and bin/onboarding/"
     captions:
       - text: All of this is now committed with the code.
       - text: The next developer just opens the repo, and runs setup.
-    media: { kind: none }
+    media:
+      kind: graphic
+      graphic: onboarding-icon
+      alt: "The Onboarding extension's icon: a clipboard with a checked list."
+      frame: mark
+    cta: { label: View on GitHub, url: https://github.com/getappmap/vscode-onboarding, kind: github }
