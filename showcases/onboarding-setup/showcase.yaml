@@ -121,7 +121,7 @@ scenes:
       motion: still
   - id: recap
     theme: console
-    title: Now the onboarding steps live forever in the repo
+    title: Onboarding this repo is now smooth and efficient
     captions:
       - text: The setup is committed to the repo, so every new developer who clones it gets the same working setup.
     media:
