@@ -20,6 +20,11 @@ with a newer `node` given by its full path.
 
 The developer is not expected to know how `onboarding.yaml` works.
 
+- **Start by saying what you are about to do**, in two or three plain lines, before reading any
+  files. When there is no `onboarding.yaml` yet, say what it is for: it lists everything a
+  developer's computer needs for this repository, and Onboarding uses it to check, set up and
+  prove each item. Say that you will draft it for them to review, and that nothing will be
+  installed or changed on their computer.
 - **Ask only for decisions the project does not already answer**, such as which tool the team
   uses. Give your recommendation with the question.
 - **Do not ask them to approve technical changes**: commands, entry fields, SHAs, or edits that
@@ -48,8 +53,16 @@ The developer is not expected to know how `onboarding.yaml` works.
    Do not run fixes yourself.
 7. **Tell the person what you set up**, in a few plain lines: the setup steps, the files you
    changed besides the manifest, and any decision you still need from them. Say that no fix
-   has been run yet, and suggest running setup with the `onboarding-setup` skill before they
-   commit the manifest: fixes often fail in ways a check cannot show.
+   has been run yet.
+{{#vscode}}
+   End with the next step, in these words: "Next: open **Onboarding** in the Activity Bar and
+   press ▶ to set up this computer. Do this before you commit `onboarding.yaml`: fixes can fail
+   in ways a check cannot show."
+{{/vscode}}
+{{#standalone}}
+   Suggest running setup with the `onboarding-setup` skill before they commit the manifest:
+   fixes often fail in ways a check cannot show.
+{{/standalone}}
 
 ## CI shows what the project needs, not what a developer does
 

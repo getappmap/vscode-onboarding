@@ -30,6 +30,14 @@ suite('Status view: the pages', () => {
     assert.match(html, /data-command="runSetup"/);
   });
 
+  test('before setup has run on this computer, the list says how to start', () => {
+    const html = renderPage({ kind: 'list', statuses: [
+      { id: 'jdk', title: 'Java 21', state: 'unchecked' }, { id: 'gradle', title: 'gradle', state: 'unchecked' },
+    ] }, 'csp', 'n0nce');
+    assert.strictEqual(visibleText(html), 'Onboarding Run Setup Not run on this computer yet. '
+      + 'Press Run Setup to check each item and set up what is missing. ○ Java 21 Not checked yet ○ gradle Not checked yet');
+  });
+
   test('a failed entry leads with what happened and what to do, then how it works', () => {
     const html = renderPage({
       kind: 'entry',

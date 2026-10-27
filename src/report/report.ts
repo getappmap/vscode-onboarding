@@ -95,6 +95,11 @@ export function stateText(status: EntryStatus): string {
   return because ? `${STATE_TEXT[status.state]}, ${because}` : STATE_TEXT[status.state];
 }
 
+/** True when setup has not run on this computer yet: there are rows, and none has been checked. */
+export function neverRun(statuses: EntryStatus[]): boolean {
+  return statuses.length > 0 && statuses.every(s => s.state === 'unchecked');
+}
+
 const RUNNING: EntryState[] = ['checking', 'fixing', 'proving'];
 
 /**
@@ -164,6 +169,13 @@ export class SetupReport implements SetupReporter, vscode.TreeDataProvider<Entry
   /** Where progress messages go during the next run. Call before runSetup. */
   attachProgress(progress: vscode.Progress<{ message?: string; increment?: number }>): void {
     this.progress = progress;
+  }
+
+  /** The line above the rows: how to start, until setup has run on this computer. */
+  message(): string | undefined {
+    return neverRun(this.statuses)
+      ? 'Nothing has been checked on this computer yet. Press ▶ to check each item and set up what is missing.'
+      : undefined;
   }
 
   /** Rows that failed or were skipped, for asking Copilot about them. */

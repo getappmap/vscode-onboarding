@@ -207,6 +207,26 @@ suite('Report: rows in the list', () => {
   });
 });
 
+suite('Report: the line above the rows', () => {
+  test('until setup has run, it says how to start', () => {
+    const report = new SetupReport();
+    report.show([{ id: 'jdk', title: 'Java 21', state: 'unchecked' }, { id: 'gradle', title: 'gradle', state: 'unchecked' }]);
+    assert.match(report.message() ?? '', /^Nothing has been checked on this computer yet\. Press ▶/);
+  });
+
+  test('once any row has a result, or a run starts, it goes away', () => {
+    const report = new SetupReport();
+    report.show([{ id: 'jdk', title: 'Java 21', state: 'failed' }, { id: 'gradle', title: 'gradle', state: 'unchecked' }]);
+    assert.strictEqual(report.message(), undefined);
+    report.begin([jdk, gradle]);
+    assert.strictEqual(report.message(), undefined);
+  });
+
+  test('with no rows, there is nothing to start, so the empty view speaks instead', () => {
+    assert.strictEqual(new SetupReport().message(), undefined);
+  });
+});
+
 suite('Report: progress', () => {
   setup(() => fake.reset());
 

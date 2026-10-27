@@ -3,7 +3,7 @@ import { getAgentHost } from './agent/agentHost';
 import { SKILLS, troubleshootPrompt } from './agent/prompts';
 import { Entry, MANIFEST_FILE, Manifest, combineLayers, entryLine, forPlatform, readManifest } from './manifest/manifest';
 import { ManifestMcpProvider, PROVIDER_ID } from './connections/mcpServers';
-import { EntryStatus, RUN_ENTRY, SHOW_ENTRY, STOP_SETUP, SetupReport, allOf, rowsBeforeRun, withSetupProgress } from './report/report';
+import { EntryStatus, REPORT_VIEW, RUN_ENTRY, SHOW_ENTRY, STOP_SETUP, SetupReport, allOf, rowsBeforeRun, withSetupProgress } from './report/report';
 import { OUTPUT_CHANNEL, SetupOutput } from './report/setupOutput';
 import { StatusView } from './report/statusView';
 import { STATUS_DIR, STATUS_FILE, StatusRecorder, emptyStatus, provenFrom, readStatus } from './report/statusFile';
@@ -25,7 +25,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   // Register the list before anything else, with nothing to wait for first: until then,
   // VS Code shows "There is no data provider registered" in the view.
   const report = new SetupReport();
-  context.subscriptions.push(vscode.window.registerTreeDataProvider('onboarding.report', report));
+  const reportView = vscode.window.createTreeView(REPORT_VIEW, { treeDataProvider: report });
+  context.subscriptions.push(reportView, report.onDidChangeTreeData(() => reportView.message = report.message()));
 
   const folder = vscode.workspace.workspaceFolders?.[0];
   const log = vscode.window.createOutputChannel('Onboarding', { log: true });

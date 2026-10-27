@@ -143,7 +143,7 @@
       {
         "view": "onboarding.report",
         "when": "onboarding.viewState == empty",
-        "contents": "This folder has nothing to set up yet: there is no onboarding.yaml, or it lists no setup steps.\n[Draft Manifest](command:onboarding.draftManifest)"
+        "contents": "Onboarding sets up a developer's computer for this repository. It checks each tool and credential the project needs, installs what is missing, and proves it works.\nThis folder has nothing to set up yet: there is no onboarding.yaml, or it lists no setup steps. That file lists what to set up. Copilot can read the repository and draft it for you to review.\n[Draft Manifest](command:onboarding.draftManifest)\n[Learn more about Onboarding](command:extension.open?%5B%22appland.onboarding%22%5D)"
       }
     ],
     "menus": {

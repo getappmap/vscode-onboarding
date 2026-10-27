@@ -1,7 +1,7 @@
 import type { Command, Entry } from '../manifest/manifest';
 import { commandFor } from '../setup/runCommand';
 import { expandPreset } from '../setup/presets';
-import { EntryState, EntryStatus, PROBLEMS, stateText } from './report';
+import { EntryState, EntryStatus, PROBLEMS, neverRun, stateText } from './report';
 
 /** What the status view's page asks the extension to do. */
 export type PageMessage =
@@ -61,13 +61,16 @@ ${body}
 
 function listBody(statuses: EntryStatus[]): string {
   const ready = statuses.filter(s => s.state === 'ready').length;
+  const summary = neverRun(statuses)
+    ? 'Not run on this computer yet. Press Run Setup to check each item and set up what is missing.'
+    : `${ready} of ${statuses.length} ready`;
   const rows = statuses.map(s => `<li><a href="#" data-command="entry" data-id="${escape(s.id)}">${mark(s.state)}`
     + `<span class="title">${escape(s.title)}</span><span class="state">${escape(stateText(s))}</span></a></li>`);
   return `<header>
 <h1>Onboarding</h1>
 <button data-command="runSetup">Run Setup</button>
 </header>
-<p class="summary">${ready} of ${statuses.length} ready</p>
+<p class="summary">${summary}</p>
 ${statuses.length > 0 ? `<ul class="entries">${rows.join('\n')}</ul>` : '<p>There are no setup steps.</p>'}`;
 }
 
