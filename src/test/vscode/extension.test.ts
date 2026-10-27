@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 
 suite('Extension', () => {
   test('activates in a folder with onboarding.yaml and registers its commands', async () => {
-    const extension = vscode.extensions.getExtension('your-company.onboarding');
+    const extension = vscode.extensions.getExtension('appland.onboarding');
     assert.ok(extension, 'extension not found');
     await extension.activate();
 
@@ -44,6 +44,11 @@ suite('Extension', () => {
     for (const id of ['workbench.action.chat.newChat', 'workbench.action.chat.open']) {
       assert.ok(commands.includes(id), `${id} is missing`);
     }
+  });
+
+  test('the command behind Learn more in the empty view exists', async () => {
+    // Built-in, not a stable API, like the chat commands above.
+    assert.ok((await vscode.commands.getCommands(true)).includes('extension.open'), 'extension.open is missing');
   });
 
   test('Copilot sees both onboarding tools', () => {
